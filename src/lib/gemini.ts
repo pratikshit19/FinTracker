@@ -1,9 +1,14 @@
 import type { AIInsight, MonthSummary } from '@/types';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 async function callGemini(prompt: string): Promise<string> {
+  if (!GEMINI_API_KEY) {
+    console.error('[Fintrack] Gemini API key is missing. Add VITE_GEMINI_API_KEY to your .env file.');
+    throw new Error('API_KEY_MISSING');
+  }
+
   const response = await fetch(GEMINI_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -12,7 +17,13 @@ async function callGemini(prompt: string): Promise<string> {
       generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
     }),
   });
-  if (!response.ok) throw new Error('Gemini API request failed');
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    console.error('[Fintrack] Gemini API error:', response.status, errorData);
+    throw new Error(`Gemini API request failed: ${response.status}`);
+  }
+
   const data = await response.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 }
