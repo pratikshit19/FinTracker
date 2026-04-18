@@ -16,12 +16,12 @@ interface ChatMsg { role: 'user' | 'ai'; text: string }
 
 export const InsightsPage = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [insight, setInsight]   = useState<AIInsight | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [insight, setInsight] = useState<AIInsight | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [chat, setChat]         = useState<ChatMsg[]>([]);
+  const [chat, setChat] = useState<ChatMsg[]>([]);
   const [question, setQuestion] = useState('');
-  const [asking, setAsking]     = useState(false);
+  const [asking, setAsking] = useState(false);
   const [showMonths, setShowMonths] = useState(false);
 
   const now = new Date();
@@ -115,7 +115,10 @@ export const InsightsPage = () => {
                       contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px' }}
                       labelStyle={{ color: 'var(--text-muted)' }}
                       itemStyle={{ color: 'var(--text-primary)' }}
-                      formatter={(v: number) => [formatCurrency(v), 'Spent']}
+                      formatter={(value) => {
+                        const num = Number(value ?? 0);
+                        return [formatCurrency(num), 'Spent'];
+                      }}
                     />
                     <Bar dataKey="amount" fill="var(--accent)" radius={[4, 4, 0, 0]} maxBarSize={40} />
                   </BarChart>
@@ -136,7 +139,10 @@ export const InsightsPage = () => {
                       <Tooltip
                         contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px' }}
                         labelFormatter={(_, p) => p[0]?.payload?.fullName ?? ''}
-                        formatter={(v: number) => [formatCurrency(v), 'Spent']}
+                        formatter={(value) => {
+                          const num = Number(value ?? 0);
+                          return [formatCurrency(num), 'Spent'];
+                        }}
                         itemStyle={{ color: 'var(--text-primary)' }}
                         labelStyle={{ color: 'var(--text-muted)' }}
                       />
@@ -166,11 +172,10 @@ export const InsightsPage = () => {
                         initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                         className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
-                        <div className={`max-w-[85%] px-3 py-2 rounded-[var(--radius-sm)] text-xs leading-relaxed ${
-                          msg.role === 'user'
-                            ? 'bg-[var(--accent)] text-white'
-                            : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border)]'
-                        }`}>
+                        <div className={`max-w-[85%] px-3 py-2 rounded-[var(--radius-sm)] text-xs leading-relaxed ${msg.role === 'user'
+                          ? 'bg-[var(--accent)] text-white'
+                          : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border)]'
+                          }`}>
                           {msg.text}
                         </div>
                       </motion.div>
