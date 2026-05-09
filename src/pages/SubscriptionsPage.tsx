@@ -27,6 +27,7 @@ export const SubscriptionsPage = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Subscription | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  const [viewFilter, setViewFilter] = useState<'monthly' | 'yearly'>('monthly');
 
   const fetchSubscriptions = useCallback(async () => {
     setLoading(true);
@@ -73,6 +74,11 @@ export const SubscriptionsPage = () => {
       return acc;
     }, 0);
 
+  const filteredSubs = subscriptions.filter(s => {
+    if (viewFilter === 'monthly') return s.billing_cycle === 'monthly' || s.billing_cycle === 'weekly';
+    return s.billing_cycle === 'yearly';
+  });
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -81,30 +87,58 @@ export const SubscriptionsPage = () => {
           <h1 className="text-2xl font-bold">Subscriptions</h1>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">Manage your recurring payments</p>
         </div>
-        <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} id="add-sub-btn">
-          <Plus size={15} /> Add Subscription
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* View Toggle Switch in Header */}
+          <div className="flex p-1 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border)]">
+            {(['monthly', 'yearly'] as const).map((view) => (
+              <button
+                key={view}
+                onClick={() => setViewFilter(view)}
+                className={`relative px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
+                  viewFilter === view 
+                    ? 'text-white' 
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                }`}
+              >
+                {viewFilter === view && (
+                  <motion.div
+                    layoutId="view-toggle"
+                    className="absolute inset-0 bg-[var(--accent)] rounded-lg shadow-sm"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <span className="relative z-10 capitalize">{view}</span>
+              </button>
+            ))}
+          </div>
+          <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} id="add-sub-btn" size="sm" className="hidden sm:flex">
+            <Plus size={15} /> Add Subscription
+          </Button>
+          <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} size="icon" className="sm:hidden">
+            <Plus size={18} />
+          </Button>
+        </div>
       </motion.div>
 
       {/* Summary Card */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="md:col-span-1 bg-[var(--accent)] text-white border-none">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="bg-[var(--accent)] text-white border-none">
           <CardContent className="p-5 flex flex-col gap-1">
             <p className="text-xs font-medium uppercase tracking-wider opacity-80">Total Monthly</p>
             <p className="text-3xl font-bold">{formatAmount(totalMonthly)}</p>
-            <p className="text-xs opacity-70 mt-1">Across {subscriptions.length} recurring services</p>
+            <p className="text-xs opacity-70 mt-1">Across {subscriptions.length} active services</p>
           </CardContent>
         </Card>
         
-        <Card className="md:col-span-2">
+        <Card className="border-dashed border-[var(--border)]">
           <CardContent className="p-5 flex items-center justify-between h-full">
             <div className="flex items-center gap-4">
               <div className="h-10 w-10 rounded-full bg-[var(--info-subtle)] flex items-center justify-center text-[var(--info)]">
                 <Repeat size={20} />
               </div>
               <div>
-                <p className="text-sm font-medium">Smart Detection</p>
-                <p className="text-xs text-[var(--text-muted)]">Connect SMS/Email to auto-list subscriptions</p>
+                <p className="text-sm font-medium">Auto-Detection</p>
+                <p className="text-xs text-[var(--text-muted)]">Scan receipts to find subscriptions</p>
               </div>
             </div>
             <Button variant="outline" size="sm" className="gap-2">
@@ -120,27 +154,29 @@ export const SubscriptionsPage = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {subscriptions.length === 0 ? (
+          {filteredSubs.length === 0 ? (
             <Card className="lg:col-span-2 border-dashed">
               <CardContent className="py-16 flex flex-col items-center justify-center text-center">
                 <div className="h-16 w-16 rounded-full bg-[var(--bg-elevated)] flex items-center justify-center mb-4">
                   <CreditCard size={32} className="text-[var(--text-muted)]" />
                 </div>
-                <h3 className="text-lg font-semibold">No subscriptions found</h3>
+                <h3 className="text-lg font-semibold">No {viewFilter} subscriptions</h3>
                 <p className="text-sm text-[var(--text-muted)] max-w-xs mt-1">
-                  Add your Netflix, Gym, or Cloud memberships to track them alongside your expenses.
+                  You don't have any {viewFilter} services tracked yet.
                 </p>
                 <Button variant="outline" className="mt-6" onClick={() => { setEditTarget(undefined); setFormOpen(true); }}>
-                  Add Subscription
+                  Add {viewFilter} Subscription
                 </Button>
               </CardContent>
             </Card>
           ) : (
-            subscriptions.map((sub, i) => (
+            filteredSubs.map((sub, i) => (
               <motion.div
                 key={sub.id}
+                layout
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ delay: i * 0.05 }}
               >
                 <Card className="hover:border-[var(--accent)]/30 transition-all cursor-pointer group">

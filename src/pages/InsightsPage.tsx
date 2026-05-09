@@ -9,7 +9,7 @@ import { AIInsightCard } from '@/components/insights/AIInsightCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { CATEGORY_COLORS } from '@/lib/utils';
 import type { Expense, AIInsight, ExpenseCategory } from '@/types';
 
@@ -149,8 +149,11 @@ export const InsightsPage = () => {
                         labelStyle={{ color: 'var(--text-muted)' }}
                       />
                       <Bar dataKey="amount" radius={[0, 4, 4, 0]} maxBarSize={18}>
-                        {catData.map((entry) => (
-                          <rect key={entry.name} fill={CATEGORY_COLORS[entry.fullName as ExpenseCategory] ?? 'var(--accent)'} />
+                        {catData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={CATEGORY_COLORS[entry.fullName as ExpenseCategory] ?? 'var(--accent)'} 
+                          />
                         ))}
                       </Bar>
                     </BarChart>

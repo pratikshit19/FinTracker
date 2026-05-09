@@ -235,7 +235,7 @@ export const SettingsPage = () => {
 
       {/* Footer */}
       <p className="text-xs text-[var(--text-muted)] text-center">
-        Fintrack v1.0 · Built with Supabase + Gemini AI
+        FinTrace v1.0 · Built with Supabase + Gemini AI
       </p>
     </div>
   );
