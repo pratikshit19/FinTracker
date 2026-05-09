@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { Sparkles, Send, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { generateExpenseInsights, askQuestion } from '@/lib/gemini';
-import { buildMonthSummary, formatCurrency } from '@/lib/utils';
+import { buildMonthSummary } from '@/lib/utils';
+import { useCurrency } from '@/lib/CurrencyContext';
 import { AIInsightCard } from '@/components/insights/AIInsightCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -23,7 +24,8 @@ export const InsightsPage = () => {
   const [question, setQuestion] = useState('');
   const [asking, setAsking] = useState(false);
   const [showMonths, setShowMonths] = useState(false);
-
+  const { currency, formatAmount, getCurrencySymbol } = useCurrency();
+  const symbol = getCurrencySymbol();
   const now = new Date();
 
   const fetchExpenses = useCallback(async () => {
@@ -40,10 +42,10 @@ export const InsightsPage = () => {
   const refreshInsight = useCallback(async () => {
     if (expenses.length === 0) return;
     setAiLoading(true);
-    const result = await generateExpenseInsights(summary);
+    const result = await generateExpenseInsights(summary, currency);
     setInsight(result);
     setAiLoading(false);
-  }, [expenses, summary]);
+  }, [expenses, summary, currency]);
 
   useEffect(() => {
     if (!loading && expenses.length > 0 && !insight) refreshInsight();
@@ -56,7 +58,7 @@ export const InsightsPage = () => {
     setChat(c => [...c, { role: 'user', text: q }]);
     setQuestion('');
     setAsking(true);
-    const answer = await askQuestion(q, summary);
+    const answer = await askQuestion(q, summary, currency);
     setChat(c => [...c, { role: 'ai', text: answer }]);
     setAsking(false);
   };
@@ -110,14 +112,14 @@ export const InsightsPage = () => {
                   <BarChart data={monthlyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                     <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
+                    <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${symbol}${v}`} />
                     <Tooltip
                       contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px' }}
                       labelStyle={{ color: 'var(--text-muted)' }}
                       itemStyle={{ color: 'var(--text-primary)' }}
                       formatter={(value) => {
                         const num = Number(value ?? 0);
-                        return [formatCurrency(num), 'Spent'];
+                        return [formatAmount(num), 'Spent'];
                       }}
                     />
                     <Bar dataKey="amount" fill="var(--accent)" radius={[4, 4, 0, 0]} maxBarSize={40} />
@@ -134,14 +136,14 @@ export const InsightsPage = () => {
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={catData} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-                      <XAxis type="number" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
+                      <XAxis type="number" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${symbol}${v}`} />
                       <YAxis type="category" dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
                       <Tooltip
                         contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px' }}
                         labelFormatter={(_, p) => p[0]?.payload?.fullName ?? ''}
                         formatter={(value) => {
                           const num = Number(value ?? 0);
-                          return [formatCurrency(num), 'Spent'];
+                          return [formatAmount(num), 'Spent'];
                         }}
                         itemStyle={{ color: 'var(--text-primary)' }}
                         labelStyle={{ color: 'var(--text-muted)' }}

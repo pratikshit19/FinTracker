@@ -23,8 +23,8 @@ const CustomTooltip = ({ active, payload, label, formatAmount }: any) => {
 };
 
 export const SpendingChart = ({ data }: SpendingChartProps) => {
-  const { formatAmount, currency } = useCurrency();
-  const symbol = currency === 'INR' ? '₹' : '$'; // Simple fallback for YAxis
+  const { formatAmount, getCurrencySymbol } = useCurrency();
+  const symbol = getCurrencySymbol();
 
   return (
     <Card>
@@ -41,8 +41,8 @@ export const SpendingChart = ({ data }: SpendingChartProps) => {
             <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="spendGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  <stop offset="5%"  stopColor="var(--accent)" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -60,11 +60,11 @@ export const SpendingChart = ({ data }: SpendingChartProps) => {
               <Area
                 type="monotone"
                 dataKey="amount"
-                stroke="#6366f1"
+                stroke="var(--accent)"
                 strokeWidth={2}
                 fill="url(#spendGrad)"
                 dot={false}
-                activeDot={{ r: 4, fill: '#6366f1', strokeWidth: 0 }}
+                activeDot={{ r: 4, fill: 'var(--accent)', strokeWidth: 0 }}
               />
             </AreaChart>
           </ResponsiveContainer>

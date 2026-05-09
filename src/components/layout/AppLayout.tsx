@@ -49,7 +49,7 @@ export const AppLayout = () => {
       <main className="flex-1 lg:ml-56 min-h-screen flex flex-col">
 
         {/* ── Mobile top bar ─────────────────────────────── */}
-        <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-4 py-3.5 bg-[var(--bg-surface)]/90 backdrop-blur-md border-b border-[var(--border)]">
+        <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-3 py-2.5 bg-[var(--bg-surface)]/90 backdrop-blur-md border-b border-[var(--border)]">
           <button
             id="mobile-menu-btn"
             onClick={() => setSidebarOpen(true)}
@@ -72,7 +72,7 @@ export const AppLayout = () => {
         </header>
 
         {/* Page content */}
-        <div className="flex-1 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-24 lg:pb-8">
+        <div className="flex-1 px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-20 lg:pb-8">
           <div className="max-w-6xl mx-auto">
             <Outlet />
           </div>
@@ -87,7 +87,7 @@ export const AppLayout = () => {
             to={to}
             className={({ isActive }) =>
               cn(
-                'flex-1 flex flex-col items-center gap-0.5 py-2.5 px-1 text-[10px] font-medium transition-colors',
+                'flex-1 flex flex-col items-center gap-0 py-2 px-1 text-[10px] font-medium transition-colors',
                 isActive
                   ? 'text-[var(--accent)]'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'

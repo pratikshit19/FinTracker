@@ -91,10 +91,10 @@ export const AuthPage = () => {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="relative z-10 w-full max-w-sm"
+        className="relative z-10 w-full max-w-sm px-1"
       >
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2.5 mb-8">
+        <div className="flex items-center justify-center gap-2.5 mb-6">
           <div className="h-9 w-9 rounded-xl bg-[var(--accent)] flex items-center justify-center shadow-lg animate-pulse-glow">
             <TrendingUp size={18} className="text-white" />
           </div>
@@ -102,7 +102,7 @@ export const AuthPage = () => {
         </div>
 
         {/* Card */}
-        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-7 shadow-[var(--shadow-lg)]">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-5 sm:p-7 shadow-[var(--shadow-lg)]">
           <h1 className="text-xl font-semibold text-[var(--text-primary)] mb-1">
             {mode === 'login' ? 'Welcome back' : 'Create account'}
           </h1>

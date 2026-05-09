@@ -1,7 +1,7 @@
 import type { AIInsight, MonthSummary } from '@/types';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 async function callGemini(prompt: string): Promise<string> {
   if (!GEMINI_API_KEY) {
@@ -28,18 +28,18 @@ async function callGemini(prompt: string): Promise<string> {
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 }
 
-export async function generateExpenseInsights(summary: MonthSummary): Promise<AIInsight> {
+export async function generateExpenseInsights(summary: MonthSummary, currency: string): Promise<AIInsight> {
   const categoryList = Object.entries(summary.categoryBreakdown)
     .sort((a, b) => b[1] - a[1])
-    .map(([cat, amt]) => `${cat}: $${amt.toFixed(2)}`)
+    .map(([cat, amt]) => `${cat}: ${amt.toFixed(2)} ${currency}`)
     .join(', ');
 
   const prompt = `You are a personal finance advisor AI. Analyze the following monthly expense data and provide actionable insights.
 
 Monthly Summary:
-- Total Spent: $${summary.totalSpent.toFixed(2)}
+- Total Spent: ${summary.totalSpent.toFixed(2)} ${currency}
 - Number of Transactions: ${summary.transactionCount}
-- Average per Day: $${summary.avgPerDay.toFixed(2)}
+- Average per Day: ${summary.avgPerDay.toFixed(2)} ${currency}
 - Top Category: ${summary.topCategory}
 - Category Breakdown: ${categoryList}
 
@@ -74,13 +74,13 @@ Respond ONLY with valid JSON in this exact format (no markdown, no extra text):
   }
 }
 
-export async function askQuestion(question: string, summary: MonthSummary): Promise<string> {
+export async function askQuestion(question: string, summary: MonthSummary, currency: string): Promise<string> {
   const categoryList = Object.entries(summary.categoryBreakdown)
-    .map(([cat, amt]) => `${cat}: $${amt.toFixed(2)}`)
+    .map(([cat, amt]) => `${cat}: ${amt.toFixed(2)} ${currency}`)
     .join(', ');
 
   const prompt = `You are a helpful personal finance assistant. The user has this month's expense data:
-- Total: $${summary.totalSpent.toFixed(2)}, ${summary.transactionCount} transactions
+- Total: ${summary.totalSpent.toFixed(2)} ${currency}, ${summary.transactionCount} transactions
 - Categories: ${categoryList}
 
 Answer this question concisely (2-3 sentences max): "${question}"`;
