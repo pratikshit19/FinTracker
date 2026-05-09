@@ -3,8 +3,9 @@ import { Trash2, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { CATEGORY_COLORS, CATEGORY_ICONS, formatCurrency, formatDate } from '@/lib/utils';
+import { CATEGORY_COLORS, CATEGORY_ICONS, formatDate } from '@/lib/utils';
 import type { Expense, ExpenseCategory } from '@/types';
+import { useCurrency } from '@/lib/CurrencyContext';
 
 interface RecentTransactionsProps {
   expenses: Expense[];
@@ -17,6 +18,7 @@ interface RecentTransactionsProps {
 export const RecentTransactions = ({
   expenses, onDelete, onEdit, limit = 8, title = 'Recent Transactions'
 }: RecentTransactionsProps) => {
+  const { formatAmount } = useCurrency();
   const displayed = expenses.slice(0, limit);
 
   return (
@@ -70,7 +72,7 @@ export const RecentTransactions = ({
 
                     {/* Amount */}
                     <p className="text-sm font-semibold text-[var(--text-primary)] tabular-nums shrink-0">
-                      {formatCurrency(expense.amount)}
+                      {formatAmount(expense.amount)}
                     </p>
 
                     {/* Actions — appear on hover */}

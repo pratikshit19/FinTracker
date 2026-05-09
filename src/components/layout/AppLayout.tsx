@@ -1,18 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { Menu, LayoutDashboard, ArrowLeftRight, Sparkles, Settings } from 'lucide-react';
+import { Menu, LayoutDashboard, ArrowLeftRight, Sparkles, Settings, CreditCard, User } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 
 const BOTTOM_NAV = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Home'      },
   { to: '/transactions',  icon: ArrowLeftRight,  label: 'Expenses'  },
+  { to: '/subscriptions', icon: CreditCard,       label: 'Subs'      },
   { to: '/insights',      icon: Sparkles,        label: 'Insights'  },
   { to: '/settings',      icon: Settings,        label: 'Settings'  },
 ];
 
 export const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profile, setProfile] = useState<{ username: string; avatar_url: string | null } | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('username, avatar_url')
+          .eq('id', user.id)
+          .single();
+        if (data) setProfile(data);
+      }
+    };
+    fetchProfile();
+
+    const channel = supabase
+      .channel('header_profile')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, payload => {
+        setProfile(payload.new as any);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-[var(--bg-base)]">
@@ -30,11 +57,17 @@ export const AppLayout = () => {
           >
             <Menu size={18} />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="h-5 w-5 rounded-md bg-[var(--accent)] flex items-center justify-center">
-              <span className="text-white text-[10px] font-bold">F</span>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="h-6 w-6 rounded-full bg-[var(--accent)] flex items-center justify-center overflow-hidden shrink-0 border border-[var(--border)]">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <User size={12} className="text-white" />
+              )}
             </div>
-            <span className="font-semibold text-sm tracking-tight text-[var(--text-primary)]">Fintrack</span>
+            <span className="font-bold text-xs tracking-tight text-[var(--text-primary)] truncate">
+              {profile?.username || 'FinTrace'}
+            </span>
           </div>
         </header>
 

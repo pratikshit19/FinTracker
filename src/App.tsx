@@ -10,6 +10,7 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { TransactionsPage } from '@/pages/TransactionsPage';
 import { InsightsPage } from '@/pages/InsightsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { SubscriptionsPage } from '@/pages/SubscriptionsPage';
 import { Spinner } from '@/components/ui/Spinner';
 
 function App() {
@@ -18,14 +19,46 @@ function App() {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    const checkInitialSession = async () => {
+      // Check if we have a fragment in the URL (typical for OAuth redirects)
+      const hasAuthData = window.location.hash || window.location.search.includes('code=');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        console.log('[Auth] Session found immediately');
+        setSession(session);
+        setLoading(false);
+      } else if (hasAuthData) {
+        console.log('[Auth] Redirect detected, polling for session...');
+        let attempts = 0;
+        const interval = setInterval(async () => {
+          attempts++;
+          const { data: { session: polledSession } } = await supabase.auth.getSession();
+          if (polledSession) {
+            console.log('[Auth] Polled session found!');
+            setSession(polledSession);
+            setLoading(false);
+            clearInterval(interval);
+          } else if (attempts > 20) { // Increased to 20 attempts
+            console.log('[Auth] Polling timed out');
+            setLoading(false);
+            clearInterval(interval);
+          }
+        }, 500);
+      } else {
+        setLoading(false);
+      }
+    };
+
+    checkInitialSession();
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[Auth] Event:', event, session?.user?.email);
       setSession(session);
+      if (event === 'SIGNED_IN') setLoading(false);
+      if (event === 'INITIAL_SESSION' && session) setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -36,7 +69,7 @@ function App() {
       <div className="min-h-screen bg-[var(--bg-base)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Spinner size="lg" />
-          <p className="text-sm text-[var(--text-muted)]">Loading Fintrack…</p>
+          <p className="text-sm text-[var(--text-muted)]">Loading FinTrace…</p>
         </div>
       </div>
     );
@@ -56,6 +89,7 @@ function App() {
           <Route element={<AppLayout />}>
             <Route path="/dashboard"    element={<DashboardPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
+            <Route path="/subscriptions" element={<SubscriptionsPage />} />
             <Route path="/insights"     element={<InsightsPage />} />
             <Route path="/settings"     element={<SettingsPage />} />
             <Route path="*"             element={<Navigate to="/dashboard" replace />} />

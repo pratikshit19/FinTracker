@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
-import { cn, formatCurrency } from '@/lib/utils';
+import { useCurrency } from '@/lib/CurrencyContext';
+import { cn } from '@/lib/utils';
 
 interface StatCardProps {
   title: string;
@@ -18,6 +19,7 @@ interface StatCardProps {
 export const StatCard = ({
   title, value, change, changeLabel, icon, color = 'var(--accent)', index = 0, isCurrency = true
 }: StatCardProps) => {
+  const { formatAmount } = useCurrency();
   const isPositive = (change ?? 0) > 0;
   const isNeutral = change === undefined || change === 0;
 
@@ -39,7 +41,7 @@ export const StatCard = ({
             </span>
           </div>
           <p className="text-2xl font-bold text-[var(--text-primary)] tracking-tight mb-1.5">
-            {isCurrency ? formatCurrency(value) : value.toLocaleString()}
+            {isCurrency ? formatAmount(value) : value.toLocaleString()}
           </p>
           {!isNeutral && (
             <div className={cn('flex items-center gap-1 text-xs font-medium', isPositive ? 'text-[var(--danger)]' : 'text-[var(--success)]')}>

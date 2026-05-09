@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, ArrowLeftRight, Sparkles, Settings, LogOut, TrendingUp, X
+  LayoutDashboard, ArrowLeftRight, Sparkles, Settings, LogOut, TrendingUp, X, CreditCard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 const NAV_ITEMS = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard'  },
   { to: '/transactions',  icon: ArrowLeftRight,  label: 'Transactions' },
+  { to: '/subscriptions', icon: CreditCard,       label: 'Subscriptions' },
   { to: '/insights',      icon: Sparkles,         label: 'AI Insights' },
   { to: '/settings',      icon: Settings,         label: 'Settings'   },
 ];
@@ -21,6 +22,32 @@ interface SidebarProps {
 
 export const Sidebar = ({ open, onClose }: SidebarProps) => {
   const navigate = useNavigate();
+  const [profile, setProfile] = useState<{ username: string; avatar_url: string | null } | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('username, avatar_url')
+          .eq('id', user.id)
+          .single();
+        if (data) setProfile(data);
+      }
+    };
+    fetchProfile();
+
+    // Listen for profile changes
+    const channel = supabase
+      .channel('profile_changes')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, payload => {
+        setProfile(payload.new as any);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -29,13 +56,22 @@ export const Sidebar = ({ open, onClose }: SidebarProps) => {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="flex items-center justify-between px-5 py-5 border-b border-[var(--border)]">
-        <div className="flex items-center gap-2.5">
-          <div className="h-7 w-7 rounded-lg bg-[var(--accent)] flex items-center justify-center shrink-0">
-            <TrendingUp size={14} className="text-white" />
+      {/* Logo & Profile */}
+      <div className="flex items-center justify-between px-5 py-6 border-b border-[var(--border)] bg-[var(--bg-elevated)]/30">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full bg-[var(--accent)] border border-[var(--border)] overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <TrendingUp size={16} className="text-white" />
+            )}
           </div>
-          <span className="font-semibold text-[var(--text-primary)] tracking-tight">Fintrack</span>
+          <div className="flex flex-col min-w-0">
+            <span className="font-bold text-[var(--text-primary)] text-sm tracking-tight truncate">
+              {profile?.username || 'FinTrace User'}
+            </span>
+            <span className="text-[10px] text-[var(--text-muted)] font-medium uppercase tracking-wider">Premium Plan</span>
+          </div>
         </div>
         {/* Close button — mobile only */}
         <button

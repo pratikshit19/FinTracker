@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -14,6 +14,24 @@ export const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    // Check if we just landed from a redirect
+    if (window.location.hash || window.location.search.includes('code=')) {
+      console.log('[AuthPage] Redirect detected, checking session...');
+      setLoading(true);
+      const timer = setTimeout(async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[AuthPage] Session check result:', session?.user?.email || 'none');
+        if (session) {
+          // Redirect handled by App.tsx session listener
+        } else {
+          setLoading(false);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +49,27 @@ export const AuthPage = () => {
     } catch (err: any) {
       setError(err.message ?? 'An error occurred');
     } finally {
+      setLoading(false);
+    }
+  };
+  const handleGoogleLogin = async () => {
+    setError(''); setSuccess('');
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/dashboard',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account',
+          },
+          skipBrowserRedirect: false,
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message ?? 'An error occurred with Google Login');
       setLoading(false);
     }
   };
@@ -59,7 +98,7 @@ export const AuthPage = () => {
           <div className="h-9 w-9 rounded-xl bg-[var(--accent)] flex items-center justify-center shadow-lg animate-pulse-glow">
             <TrendingUp size={18} className="text-white" />
           </div>
-          <span className="text-xl font-bold tracking-tight">Fintrack</span>
+          <span className="text-xl font-bold tracking-tight">FinTrace</span>
         </div>
 
         {/* Card */}
@@ -131,6 +170,26 @@ export const AuthPage = () => {
               {mode === 'login' ? 'Sign In' : 'Create Account'}
             </Button>
           </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-[var(--border)]"></span></div>
+            <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold"><span className="bg-[var(--bg-surface)] px-2 text-[var(--text-muted)]">Or continue with</span></div>
+          </div>
+
+          <Button
+            variant="outline"
+            className="w-full gap-3 h-11"
+            onClick={handleGoogleLogin}
+            loading={loading}
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84c-.21 1.12-.84 2.07-1.79 2.7l2.85 2.22c1.67-1.54 2.64-3.81 2.64-6.57z" fill="#4285F4" />
+              <path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.85-2.22c-.79.53-1.8.85-3.11.85-2.39 0-4.41-1.61-5.14-3.78H.9v2.33C2.39 15.93 5.47 18 9 18z" fill="#34A853" />
+              <path d="M3.86 10.67c-.19-.56-.3-1.16-.3-1.78s.11-1.22.3-1.78V4.78H.9c-.64 1.28-1 2.73-1 4.22s.36 2.94 1 4.22l2.96-2.55z" fill="#FBBC05" />
+              <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.47.89 11.43 0 9 0 5.47 0 2.39 2.07.9 5.08l2.96 2.33c.73-2.17 2.75-3.78 5.14-3.78z" fill="#EA4335" />
+            </svg>
+            Sign in with Google
+          </Button>
 
           <div className="mt-5 text-center">
             <p className="text-xs text-[var(--text-muted)]">

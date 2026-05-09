@@ -1,24 +1,86 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { User, Trash2, LogOut, Settings, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useNavigate } from 'react-router-dom';
+import { useCurrency, CURRENCIES } from '@/lib/CurrencyContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+import { AvatarUpload } from '@/components/settings/AvatarUpload';
+import { Check } from 'lucide-react';
 
 export const SettingsPage = () => {
   const navigate = useNavigate();
+  const { currency, setCurrency } = useCurrency();
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [initialUsername, setInitialUsername] = useState('');
+  const [initialAvatar, setInitialAvatar] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [msg, setMsg] = useState('');
 
+  const hasChanges = username !== initialUsername || avatarUrl !== initialAvatar;
+
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user?.email) setEmail(data.user.email);
-    });
+    const loadProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setEmail(user.email || '');
+        console.log('[Settings] Loading profile for user:', user.id);
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('username, avatar_url')
+          .eq('id', user.id)
+          .single();
+        
+        if (error) {
+          console.warn('[Settings] Profile not found or error:', error);
+        } else if (profile) {
+          console.log('[Settings] Profile loaded:', profile);
+          setUsername(profile.username || '');
+          setAvatarUrl(profile.avatar_url);
+          setInitialUsername(profile.username || '');
+          setInitialAvatar(profile.avatar_url);
+        }
+      }
+    };
+    loadProfile();
   }, []);
+
+  const handleUpdateProfile = async () => {
+    setProfileLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      console.log('[Settings] Saving profile...', { id: user.id, username, avatar_url: avatarUrl });
+      
+      // Use upsert to ensure the row exists
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({ 
+          id: user.id, 
+          username, 
+          avatar_url: avatarUrl, 
+          updated_at: new Date().toISOString() 
+        });
+      
+      if (error) {
+        console.error('[Settings] Save error:', error);
+        setMsg('Error: ' + error.message);
+      } else {
+        console.log('[Settings] Save successful');
+        setInitialUsername(username);
+        setInitialAvatar(avatarUrl);
+        setMsg('Profile updated successfully!');
+        setTimeout(() => setMsg(''), 3000);
+      }
+    }
+    setProfileLoading(false);
+  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -52,25 +114,74 @@ export const SettingsPage = () => {
 
       {/* Profile */}
       <Card>
-        <CardHeader><CardTitle>Profile</CardTitle></CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-[var(--accent-subtle)] border border-[var(--accent)]/30 flex items-center justify-center">
-              <User size={22} className="text-[var(--accent)]" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-[var(--text-primary)]">{email}</p>
-              <p className="text-xs text-[var(--text-muted)]">Supabase Auth</p>
+        <CardHeader><CardTitle>Profile Details</CardTitle></CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6">
+            <AvatarUpload 
+              url={avatarUrl} 
+              onUpload={(url) => setAvatarUrl(url)} 
+            />
+            <div className="flex-1 flex flex-col gap-4 w-full">
+              <Input
+                label="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="How should we call you?"
+              />
+              <Input
+                label="Email"
+                value={email}
+                readOnly
+                className="opacity-60 cursor-not-allowed"
+              />
             </div>
           </div>
-          <Input
-            label="Email"
-            value={email}
-            readOnly
-            className="opacity-60 cursor-not-allowed"
-          />
+          
+          <AnimatePresence>
+            {hasChanges && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <Button 
+                  className="w-full gap-2" 
+                  onClick={handleUpdateProfile} 
+                  loading={profileLoading}
+                >
+                  <Check size={16} /> Save Profile Changes
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <p className="text-[10px] text-[var(--text-muted)] text-center">
+            User ID: {email} · Email changes require re-authentication.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Preferences */}
+      <Card>
+        <CardHeader><CardTitle>Preferences</CardTitle></CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Select value={currency} onValueChange={(val: any) => setCurrency(val)}>
+            <SelectTrigger label="Primary Currency">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CURRENCIES.map((c) => (
+                <SelectItem key={c.code} value={c.code}>
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 text-xs font-mono text-[var(--text-muted)]">{c.symbol}</span>
+                    <span>{c.name} ({c.code})</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <p className="text-xs text-[var(--text-muted)]">
-            Email changes require re-authentication. Use Supabase dashboard.
+            This will update all dashboard values and transaction history.
           </p>
         </CardContent>
       </Card>

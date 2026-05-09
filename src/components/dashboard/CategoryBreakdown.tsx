@@ -1,20 +1,21 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { CATEGORY_COLORS, CATEGORY_ICONS, formatCurrency } from '@/lib/utils';
+import { CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/utils';
 import type { ExpenseCategory } from '@/types';
+import { useCurrency } from '@/lib/CurrencyContext';
 
 interface CategoryBreakdownProps {
   breakdown: Record<string, number>;
   total: number;
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload, formatAmount }: any) => {
   if (active && payload?.length) {
     const { name, value } = payload[0];
     return (
       <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-sm)] px-3 py-2 shadow-[var(--shadow-lg)]">
         <p className="text-xs text-[var(--text-muted)]">{name}</p>
-        <p className="text-sm font-semibold text-[var(--text-primary)]">{formatCurrency(value)}</p>
+        <p className="text-sm font-semibold text-[var(--text-primary)]">{formatAmount(value)}</p>
       </div>
     );
   }
@@ -22,6 +23,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export const CategoryBreakdown = ({ breakdown, total }: CategoryBreakdownProps) => {
+  const { formatAmount } = useCurrency();
   const data = Object.entries(breakdown)
     .sort((a, b) => b[1] - a[1])
     .map(([name, value]) => ({ name, value }));
@@ -55,7 +57,7 @@ export const CategoryBreakdown = ({ breakdown, total }: CategoryBreakdownProps) 
                     />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={(props) => <CustomTooltip {...props} formatAmount={formatAmount} />} />
               </PieChart>
             </ResponsiveContainer>
 
