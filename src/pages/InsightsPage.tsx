@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Send, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -38,20 +38,33 @@ export const InsightsPage = () => {
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 
-  const summary = range === 1 
-    ? buildMonthSummary(expenses, now.getFullYear(), now.getMonth())
-    : buildRangeSummary(expenses, range);
+  const summary = useMemo(() => {
+    return range === 1 
+      ? buildMonthSummary(expenses, now.getFullYear(), now.getMonth())
+      : buildRangeSummary(expenses, range);
+  }, [expenses, range]);
 
   const refreshInsight = useCallback(async () => {
     if (expenses.length === 0) return;
     setAiLoading(true);
-    const result = await generateExpenseInsights(summary, currency);
-    setInsight(result);
-    setAiLoading(false);
-  }, [expenses, summary, currency]);
+    try {
+      const result = await generateExpenseInsights(summary, currency);
+      setInsight(result);
+    } catch (err) {
+      console.error('Failed to refresh insights:', err);
+    } finally {
+      setAiLoading(false);
+    }
+  }, [summary, currency, expenses.length]);
 
   useEffect(() => {
-    if (!loading && expenses.length > 0) refreshInsight();
+    if (loading || expenses.length === 0) return;
+    
+    const timer = setTimeout(() => {
+      refreshInsight();
+    }, 600); // Debounce AI calls by 600ms
+
+    return () => clearTimeout(timer);
   }, [loading, expenses.length, range, refreshInsight]);
 
   const handleAsk = async (e: React.FormEvent) => {

@@ -1,7 +1,7 @@
 import type { AIInsight, MonthSummary } from '@/types';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 async function callGemini(prompt: string): Promise<string> {
   if (!GEMINI_API_KEY) {
@@ -34,7 +34,7 @@ export async function generateExpenseInsights(summary: MonthSummary, currency: s
     .map(([cat, amt]) => `${cat}: ${amt.toFixed(2)} ${currency}`)
     .join(', ');
 
-  const prompt = `You are a personal finance advisor AI. Analyze the following monthly expense data and provide actionable insights.
+  const prompt = `You are a personal finance advisor AI. Analyze the following monthly expense data and provide actionable insights. Use the currency symbol for ${currency} in all your text descriptions.
 
 Monthly Summary:
 - Total Spent: ${summary.totalSpent.toFixed(2)} ${currency}

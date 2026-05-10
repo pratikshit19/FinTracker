@@ -58,31 +58,40 @@ export const RecentTransactions = ({
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[var(--text-primary)] truncate">{expense.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-[var(--text-muted)]">{formatDate(expense.date)}</span>
-                        <Badge
-                          variant="muted"
-                          style={{ color, borderColor: `${color}30`, background: `${color}12` }}
-                        >
-                          {expense.category}
-                        </Badge>
-                      </div>
+                      <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{expense.title}</p>
+                      <p className="text-[11px] text-[var(--text-muted)] font-medium">{formatDate(expense.date)}</p>
                     </div>
 
-                    {/* Amount */}
-                    <p className="text-sm font-semibold text-[var(--text-primary)] tabular-nums shrink-0">
-                      {formatAmount(expense.amount)}
-                    </p>
+                    {/* Amount & Category */}
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <p className="text-sm font-bold text-[var(--text-primary)] tabular-nums">
+                        {formatAmount(expense.amount)}
+                      </p>
+                      <Badge
+                        variant="muted"
+                        className="text-[9px] py-0.5 h-auto px-2 uppercase tracking-wider font-bold border-none"
+                        style={{ color, background: `${color}15` }}
+                      >
+                        {expense.category}
+                      </Badge>
+                    </div>
 
-                    {/* Actions — appear on hover */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                      <Button variant="ghost" size="icon" onClick={() => onEdit(expense)} className="h-7 w-7">
+                    {/* Actions */}
+                    <div className="flex items-center gap-0.5 ml-1">
+                      <button 
+                        onClick={() => onEdit(expense)} 
+                        className="p-2 rounded-full hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all active:scale-90"
+                        title="Edit"
+                      >
                         <Pencil size={13} />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => onDelete(expense.id)} className="h-7 w-7 hover:text-[var(--danger)] hover:bg-[var(--danger-subtle)]">
+                      </button>
+                      <button 
+                        onClick={() => onDelete(expense.id)} 
+                        className="p-2 rounded-full hover:bg-[var(--danger-subtle)] text-[var(--text-muted)] hover:text-[var(--danger)] transition-all active:scale-90"
+                        title="Delete"
+                      >
                         <Trash2 size={13} />
-                      </Button>
+                      </button>
                     </div>
                   </motion.div>
                 );

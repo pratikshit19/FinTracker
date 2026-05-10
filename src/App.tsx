@@ -12,10 +12,16 @@ import { InsightsPage } from '@/pages/InsightsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { SubscriptionsPage } from '@/pages/SubscriptionsPage';
 import { Spinner } from '@/components/ui/Spinner';
+import { SplashScreen } from '@/components/layout/SplashScreen';
+import { Onboarding } from '@/components/layout/Onboarding';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return localStorage.getItem('fintrace_onboarded') !== 'true';
+  });
 
   useEffect(() => {
     // Get initial session
@@ -64,12 +70,20 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  if (showOnboarding) {
+    return <Onboarding onComplete={() => setShowOnboarding(false)} />;
+  }
+
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--bg-base)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Spinner size="lg" />
-          <p className="text-sm text-[var(--text-muted)]">Loading FinTrace…</p>
+          <p className="text-sm text-[var(--text-muted)]">Checking Session…</p>
         </div>
       </div>
     );

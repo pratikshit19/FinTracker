@@ -10,7 +10,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/Select';
 import { Spinner } from '@/components/ui/Spinner';
-import { ALL_CATEGORIES, formatCurrency, cn } from '@/lib/utils';
+import { ALL_CATEGORIES, cn } from '@/lib/utils';
+import { useCurrency } from '@/lib/CurrencyContext';
 import type { Expense, ExpenseCategory, ExpenseInsert } from '@/types';
 
 type SortField = 'date' | 'amount' | 'title';
@@ -26,6 +27,7 @@ export const TransactionsPage = () => {
   const [formOpen, setFormOpen]     = useState(false);
   const [editTarget, setEditTarget] = useState<Expense | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  const { formatAmount } = useCurrency();
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
@@ -93,7 +95,7 @@ export const TransactionsPage = () => {
         <div>
           <h1 className="text-2xl font-bold">Transactions</h1>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">
-            {filtered.length} records · Total: {formatCurrency(totalFiltered)}
+            {filtered.length} records · Total: {formatAmount(totalFiltered)}
           </p>
         </div>
         <div className="flex items-center gap-3">
