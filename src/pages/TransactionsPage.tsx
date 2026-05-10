@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/Select';
 import { Spinner } from '@/components/ui/Spinner';
-import { ALL_CATEGORIES, formatCurrency } from '@/lib/utils';
+import { ALL_CATEGORIES, formatCurrency, cn } from '@/lib/utils';
 import type { Expense, ExpenseCategory, ExpenseInsert } from '@/types';
 
 type SortField = 'date' | 'amount' | 'title';
@@ -96,46 +96,67 @@ export const TransactionsPage = () => {
             {filtered.length} records · Total: {formatCurrency(totalFiltered)}
           </p>
         </div>
-        <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} id="add-transaction-btn">
-          <Plus size={15} /> Add
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} id="add-transaction-btn" size="sm" className="hidden sm:flex">
+            <Plus size={15} /> Add Transaction
+          </Button>
+          <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} size="icon" className="sm:hidden">
+            <Plus size={18} />
+          </Button>
+        </div>
       </motion.div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="flex-1 min-w-[200px]">
+      {/* Search and Filters */}
+      <div className="flex flex-col gap-4">
+        {/* Search Bar */}
+        <div className="relative group">
           <Input
             placeholder="Search transactions…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            leftIcon={<Search size={14} />}
+            leftIcon={<Search size={14} className="group-focus-within:text-[var(--accent)] transition-colors" />}
+            className="w-full h-11 bg-[var(--bg-elevated)]/50 border-[var(--border)] focus:bg-[var(--bg-elevated)] transition-all"
           />
         </div>
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger id="category-filter" className="w-44">
-            <Filter size={13} className="text-[var(--text-muted)] mr-1" />
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {ALL_CATEGORIES.map(c => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
+
+        {/* Filter & Sort Controls */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Category Dropdown */}
+          <div className="flex-1">
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger id="category-filter" className="w-full h-10 bg-[var(--bg-elevated)]/50 border-[var(--border)] px-4">
+                <div className="flex items-center gap-2">
+                  <Filter size={13} className="text-[var(--text-muted)]" />
+                  <SelectValue placeholder="All Categories" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="bg-[var(--bg-surface)] border-[var(--border)]">
+                <SelectItem value="all">All Categories</SelectItem>
+                {ALL_CATEGORIES.map(c => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Sort Buttons Row */}
+          <div className="flex items-center gap-1.5 p-1 bg-[var(--bg-elevated)]/30 rounded-xl border border-[var(--border)] overflow-x-auto no-scrollbar">
+            {(['date', 'amount', 'title'] as SortField[]).map(f => (
+              <button
+                key={f}
+                onClick={() => toggleSort(f)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+                  sortField === f 
+                    ? "bg-[var(--accent)] text-white shadow-sm" 
+                    : "text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
+                )}
+              >
+                <ArrowDownUp size={12} className={cn("transition-transform", sortField === f && sortDir === 'asc' ? "rotate-180" : "")} />
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
             ))}
-          </SelectContent>
-        </Select>
-        <div className="flex gap-1">
-          {(['date', 'amount', 'title'] as SortField[]).map(f => (
-            <Button
-              key={f}
-              variant={sortField === f ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => toggleSort(f)}
-              className="gap-1.5"
-            >
-              <ArrowDownUp size={12} />
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </Button>
-          ))}
+          </div>
         </div>
       </div>
 

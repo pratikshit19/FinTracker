@@ -80,9 +80,14 @@ export const DashboardPage = () => {
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Dashboard</h1>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">{monthName} {currentYear} overview</p>
         </div>
-        <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} id="add-expense-btn">
-          <Plus size={15} /> Add Expense
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} id="add-expense-btn" size="sm" className="hidden sm:flex">
+            <Plus size={15} /> Add Expense
+          </Button>
+          <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} size="icon" className="sm:hidden">
+            <Plus size={18} />
+          </Button>
+        </div>
       </motion.div>
 
       {loading ? (

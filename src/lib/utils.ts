@@ -58,6 +58,35 @@ export const ALL_CATEGORIES: ExpenseCategory[] = [
   'Healthcare', 'Housing', 'Utilities', 'Education', 'Travel', 'Other',
 ];
 
+export function buildRangeSummary(expenses: Expense[], months: number): MonthSummary {
+  const now = new Date();
+  const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  const filtered = expenses.filter(e => e.date >= startDateStr);
+
+  const totalSpent = filtered.reduce((s, e) => s + e.amount, 0);
+  const transactionCount = filtered.length;
+
+  const categoryBreakdown: Record<string, number> = {};
+  for (const e of filtered) {
+    categoryBreakdown[e.category] = (categoryBreakdown[e.category] ?? 0) + e.amount;
+  }
+
+  const topCategory = Object.entries(categoryBreakdown).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'None';
+  const avgPerDay = totalSpent / (months * 30); // Rough approximation
+
+  const dailyMap: Record<string, number> = {};
+  for (const e of filtered) {
+    dailyMap[e.date] = (dailyMap[e.date] ?? 0) + e.amount;
+  }
+  const dailySpend = Object.entries(dailyMap)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, amount]) => ({ date: formatDateShort(date), amount }));
+
+  return { totalSpent, transactionCount, avgPerDay, topCategory, categoryBreakdown, dailySpend };
+}
+
 export function buildMonthSummary(expenses: Expense[], year: number, month: number): MonthSummary {
   const filtered = expenses.filter(e => {
     const d = parseISO(e.date);

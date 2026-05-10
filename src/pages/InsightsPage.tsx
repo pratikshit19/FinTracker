@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Sparkles, Send, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { generateExpenseInsights, askQuestion } from '@/lib/gemini';
-import { buildMonthSummary } from '@/lib/utils';
+import { buildMonthSummary, buildRangeSummary, cn } from '@/lib/utils';
 import { useCurrency } from '@/lib/CurrencyContext';
 import { AIInsightCard } from '@/components/insights/AIInsightCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -24,6 +24,7 @@ export const InsightsPage = () => {
   const [question, setQuestion] = useState('');
   const [asking, setAsking] = useState(false);
   const [showMonths, setShowMonths] = useState(false);
+  const [range, setRange] = useState<1 | 6 | 12>(1);
   const { currency, formatAmount, getCurrencySymbol } = useCurrency();
   const symbol = getCurrencySymbol();
   const now = new Date();
@@ -37,7 +38,9 @@ export const InsightsPage = () => {
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 
-  const summary = buildMonthSummary(expenses, now.getFullYear(), now.getMonth());
+  const summary = range === 1 
+    ? buildMonthSummary(expenses, now.getFullYear(), now.getMonth())
+    : buildRangeSummary(expenses, range);
 
   const refreshInsight = useCallback(async () => {
     if (expenses.length === 0) return;
@@ -48,8 +51,8 @@ export const InsightsPage = () => {
   }, [expenses, summary, currency]);
 
   useEffect(() => {
-    if (!loading && expenses.length > 0 && !insight) refreshInsight();
-  }, [loading, expenses.length]);
+    if (!loading && expenses.length > 0) refreshInsight();
+  }, [loading, expenses.length, range, refreshInsight]);
 
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,7 +134,27 @@ export const InsightsPage = () => {
             {/* Category bar chart */}
             {catData.length > 0 && (
               <Card>
-                <CardHeader><CardTitle>This Month by Category</CardTitle></CardHeader>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Spending by Category</CardTitle>
+                    <div className="flex p-0.5 bg-[var(--bg-elevated)] rounded-lg border border-[var(--border)]">
+                      {( [1, 6, 12] as const).map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setRange(m)}
+                          className={cn(
+                            "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all",
+                            range === m 
+                              ? "bg-[var(--accent)] text-white shadow-sm" 
+                              : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+                          )}
+                        >
+                          {m === 1 ? '1M' : m === 6 ? '6M' : '1Y'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={catData} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>

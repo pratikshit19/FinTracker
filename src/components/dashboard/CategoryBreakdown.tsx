@@ -39,8 +39,8 @@ export const CategoryBreakdown = ({ breakdown, total }: CategoryBreakdownProps) 
             No data yet
           </div>
         ) : (
-          <div className="flex gap-6 items-center">
-            <ResponsiveContainer width={140} height={140}>
+          <div className="flex flex-col sm:flex-row gap-6 items-center">
+            <ResponsiveContainer width={140} height={140} className="shrink-0">
               <PieChart>
                 <Pie
                   data={data}
