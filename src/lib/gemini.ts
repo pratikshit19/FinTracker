@@ -1,22 +1,41 @@
 import type { AIInsight, MonthSummary } from '@/types';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-
 async function callGemini(prompt: string): Promise<string> {
   if (!GEMINI_API_KEY) {
     console.error('[Fintrack] Gemini API key is missing. Add VITE_GEMINI_API_KEY to your .env file.');
     throw new Error('API_KEY_MISSING');
   }
 
-  const response = await fetch(GEMINI_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
-    }),
-  });
+  const tryRequest = async (url: string) => {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+      }),
+    });
+    return res;
+  };
+
+  // Try the most stable production endpoint first
+  let response = await tryRequest(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`);
+  
+  // If 404, try the version-tagged stable model
+  if (response.status === 404) {
+    response = await tryRequest(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`);
+  }
+
+  // If still 404, try the beta flash
+  if (response.status === 404) {
+    response = await tryRequest(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`);
+  }
+
+  // Final fallback: Stable v1 Pro
+  if (response.status === 404) {
+    response = await tryRequest(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`);
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -34,7 +53,7 @@ export async function generateExpenseInsights(summary: MonthSummary, currency: s
     .map(([cat, amt]) => `${cat}: ${amt.toFixed(2)} ${currency}`)
     .join(', ');
 
-  const prompt = `You are a personal finance advisor AI. Analyze the following monthly expense data and provide actionable insights. Use the currency symbol for ${currency} in all your text descriptions.
+  const prompt = `You are an expert personal finance coach. Analyze the following monthly expense data and provide a deep-dive audit of the user's spending. Use the currency symbol for ${currency} in all your text descriptions.
 
 Monthly Summary:
 - Total Spent: ${summary.totalSpent.toFixed(2)} ${currency}
@@ -43,12 +62,26 @@ Monthly Summary:
 - Top Category: ${summary.topCategory}
 - Category Breakdown: ${categoryList}
 
-Respond ONLY with valid JSON in this exact format (no markdown, no extra text):
+Your goal is to identify "spending leaks" and provide high-impact, practical advice to reduce unnecessary expenses.
+
+In your "summary":
+- Be direct and analytical.
+- Mention specific categories that look inflated compared to the overall budget.
+- Identify patterns (e.g., "Frequent small transactions in ${summary.topCategory} are adding up").
+
+In your "recommendations":
+- Provide exactly 3 DETAILED, actionable tips.
+- Don't give generic advice like "save more". Give specific tactics (e.g., "Switch to an annual plan for [service] to save 15%", "Limit ${summary.topCategory} visits to twice a week to save roughly ${ (summary.categoryBreakdown[summary.topCategory] || 0) * 0.3 } ${currency} monthly").
+
+In your "anomalies":
+- Identify any category that has seen a sudden spike or seems disproportionately high.
+
+Respond ONLY with valid JSON in this exact format:
 {
-  "summary": "A 2-3 sentence summary of their spending behavior this month",
-  "score": <integer 0-100 representing overall financial health, 100 being best>,
-  "recommendations": ["tip 1", "tip 2", "tip 3"],
-  "anomalies": ["anomaly 1 if any, otherwise empty array"],
+  "summary": "...",
+  "score": <integer 0-100>,
+  "recommendations": ["...", "...", "..."],
+  "anomalies": ["..."],
   "topCategory": "${summary.topCategory}"
 }`;
 
