@@ -28,18 +28,34 @@ create table if not exists public.subscriptions (
   created_at      timestamptz default now() not null
 );
 
--- 3. Create profiles table (New!)
-create table if not exists public.profiles (
-  id          uuid primary key references auth.users(id) on delete cascade,
-  username    text,
-  avatar_url  text,
-  updated_at  timestamptz default now()
+-- 4. Create budgets table
+create table if not exists public.budgets (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid references auth.users(id) on delete cascade not null,
+  category        text not null,
+  monthly_limit   numeric(10,2) not null check (monthly_limit > 0),
+  created_at      timestamptz default now() not null,
+  unique(user_id, category)
+);
+
+-- 5. Create goals table
+create table if not exists public.goals (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid references auth.users(id) on delete cascade not null,
+  name            text not null,
+  target_amount   numeric(10,2) not null check (target_amount > 0),
+  current_amount  numeric(10,2) default 0 check (current_amount >= 0),
+  monthly_contribution numeric(10,2) default 0 check (monthly_contribution >= 0),
+  deadline        date,
+  created_at      timestamptz default now() not null
 );
 
 -- Enable Row Level Security
 alter table public.expenses enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.profiles enable row level security;
+alter table public.budgets enable row level security;
+alter table public.goals enable row level security;
 
 -- RLS Policies: Expenses
 create policy "Users can view own expenses" on public.expenses for select using (auth.uid() = user_id);
@@ -56,6 +72,18 @@ create policy "Users can delete own subscriptions" on public.subscriptions for d
 -- RLS Policies: Profiles
 create policy "Users can view any profile" on public.profiles for select using (true);
 create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
+
+-- RLS Policies: Budgets
+create policy "Users can view own budgets" on public.budgets for select using (auth.uid() = user_id);
+create policy "Users can insert own budgets" on public.budgets for insert with check (auth.uid() = user_id);
+create policy "Users can update own budgets" on public.budgets for update using (auth.uid() = user_id);
+create policy "Users can delete own budgets" on public.budgets for delete using (auth.uid() = user_id);
+
+-- RLS Policies: Goals
+create policy "Users can view own goals" on public.goals for select using (auth.uid() = user_id);
+create policy "Users can insert own goals" on public.goals for insert with check (auth.uid() = user_id);
+create policy "Users can update own goals" on public.goals for update using (auth.uid() = user_id);
+create policy "Users can delete own goals" on public.goals for delete using (auth.uid() = user_id);
 
 -- Trigger: Automatically create profile on signup
 create or replace function public.handle_new_user()
@@ -74,3 +102,5 @@ create or replace trigger on_auth_user_created
 -- Indexes for performance
 create index if not exists expenses_user_date_idx on public.expenses (user_id, date desc);
 create index if not exists subscriptions_user_status_idx on public.subscriptions (user_id, status);
+create index if not exists budgets_user_category_idx on public.budgets (user_id, category);
+create index if not exists goals_user_created_idx on public.goals (user_id, created_at desc);

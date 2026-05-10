@@ -46,4 +46,23 @@ export interface AIInsight {
   topCategory: string;
 }
 
+export interface Budget {
+  id: string;
+  user_id: string;
+  category: ExpenseCategory;
+  monthly_limit: number;
+  created_at: string;
+}
+
+export interface Goal {
+  id: string;
+  user_id: string;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  monthly_contribution: number;
+  deadline?: string;
+  created_at: string;
+}
+
 export type AuthMode = 'login' | 'signup';

@@ -22,19 +22,14 @@ async function callGemini(prompt: string): Promise<string> {
   // Try the most stable production endpoint first
   let response = await tryRequest(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`);
   
-  // If 404, try the version-tagged stable model
-  if (response.status === 404) {
-    response = await tryRequest(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`);
-  }
-
-  // If still 404, try the beta flash
+  // If 404, try v1beta
   if (response.status === 404) {
     response = await tryRequest(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`);
   }
 
-  // Final fallback: Stable v1 Pro
+  // If still 404, try the older pro model
   if (response.status === 404) {
-    response = await tryRequest(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`);
+    response = await tryRequest(`https://generativelanguage.googleapis.com/v1/models/gemini-1.0-pro:generateContent?key=${GEMINI_API_KEY}`);
   }
 
   if (!response.ok) {

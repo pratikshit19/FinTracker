@@ -12,10 +12,16 @@ import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
-import type { Expense, ExpenseInsert } from '@/types';
+import { BudgetCard } from '@/components/dashboard/BudgetCard';
+import { GoalCard } from '@/components/dashboard/GoalCard';
+import { ChevronRight, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import type { Expense, ExpenseInsert, Budget, Goal } from '@/types';
 
 export const DashboardPage = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Expense | undefined>();
@@ -25,17 +31,25 @@ export const DashboardPage = () => {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
 
-  const fetchExpenses = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('expenses')
-      .select('*')
-      .order('date', { ascending: false });
-    if (!error && data) setExpenses(data as Expense[]);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const [expensesRes, budgetsRes, goalsRes] = await Promise.all([
+      supabase.from('expenses').select('*').eq('user_id', user.id).order('date', { ascending: false }),
+      supabase.from('budgets').select('*').eq('user_id', user.id).limit(2),
+      supabase.from('goals').select('*').eq('user_id', user.id).limit(1)
+    ]);
+
+    if (expensesRes.data) setExpenses(expensesRes.data as Expense[]);
+    if (budgetsRes.data) setBudgets(budgetsRes.data as Budget[]);
+    if (goalsRes.data) setGoals(goalsRes.data as Goal[]);
+    
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const summary = buildMonthSummary(expenses, currentYear, currentMonth);
   const prevMonthSummary = buildMonthSummary(expenses, currentYear, currentMonth - 1);
@@ -48,7 +62,7 @@ export const DashboardPage = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     await supabase.from('expenses').insert({ ...data, user_id: user.id });
-    await fetchExpenses();
+    await fetchData();
     setFormOpen(false);
     setSubmitting(false);
   };
@@ -57,7 +71,7 @@ export const DashboardPage = () => {
     if (!editTarget) return;
     setSubmitting(true);
     await supabase.from('expenses').update(data).eq('id', editTarget.id);
-    await fetchExpenses();
+    await fetchData();
     setEditTarget(undefined);
     setSubmitting(false);
   };
@@ -139,6 +153,62 @@ export const DashboardPage = () => {
               <SpendingChart data={summary.dailySpend} />
             </div>
             <CategoryBreakdown breakdown={summary.categoryBreakdown} total={summary.totalSpent} />
+          </div>
+
+          {/* Budgets & Goals Preview */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-[var(--text-primary)]">Budget Trackers</h3>
+                <Link to="/budgets" className="text-xs font-bold text-[var(--accent)] hover:underline flex items-center gap-1">
+                  View All Budgets <ArrowRight size={12} />
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {budgets.map((b, i) => (
+                  <BudgetCard
+                    key={b.id}
+                    category={b.category}
+                    limit={b.monthly_limit}
+                    spent={summary.categoryBreakdown[b.category] || 0}
+                    index={i}
+                  />
+                ))}
+                {budgets.length === 0 && (
+                  <div className="md:col-span-2 bg-[var(--bg-surface)] border border-dashed border-[var(--border)] rounded-2xl p-8 text-center">
+                    <p className="text-xs text-[var(--text-muted)]">No budgets set yet. Start planning your spending!</p>
+                    <Link to="/budgets">
+                      <Button variant="link" size="sm" className="mt-2 text-[var(--accent)]">Set Budget</Button>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-[var(--text-primary)]">Top Goal</h3>
+                <Link to="/budgets" className="text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                  More
+                </Link>
+              </div>
+              {goals[0] ? (
+                <GoalCard
+                  name={goals[0].name}
+                  target={goals[0].target_amount}
+                  current={goals[0].current_amount}
+                  deadline={goals[0].deadline}
+                  monthlySavings={5000} // Simplified for preview
+                />
+              ) : (
+                <div className="bg-[var(--bg-surface)] border border-dashed border-[var(--border)] rounded-2xl p-8 h-[220px] flex flex-col items-center justify-center text-center">
+                  <p className="text-xs text-[var(--text-muted)]">No active goals.</p>
+                  <Link to="/budgets">
+                    <Button variant="link" size="sm" className="mt-2 text-[var(--accent)]">Add Goal</Button>
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Transactions */}

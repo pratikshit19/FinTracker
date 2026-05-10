@@ -11,6 +11,7 @@ import { TransactionsPage } from '@/pages/TransactionsPage';
 import { InsightsPage } from '@/pages/InsightsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { SubscriptionsPage } from '@/pages/SubscriptionsPage';
+import { BudgetsPage } from '@/pages/BudgetsPage';
 import { Spinner } from '@/components/ui/Spinner';
 import { SplashScreen } from '@/components/layout/SplashScreen';
 import { Onboarding } from '@/components/layout/Onboarding';
@@ -103,6 +104,7 @@ function App() {
           <Route element={<AppLayout />}>
             <Route path="/dashboard"    element={<DashboardPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
+            <Route path="/budgets"      element={<BudgetsPage />} />
             <Route path="/subscriptions" element={<SubscriptionsPage />} />
             <Route path="/insights"     element={<InsightsPage />} />
             <Route path="/settings"     element={<SettingsPage />} />
