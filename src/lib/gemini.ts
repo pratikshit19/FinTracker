@@ -19,27 +19,46 @@ async function callGemini(prompt: string): Promise<string> {
     return res;
   };
 
-  // Try the most stable production endpoint first
-  let response = await tryRequest(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`);
+  const models = [
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+    'gemini-1.0-pro'
+  ];
+
+  let lastStatus = 0;
+  let lastErrorData = {};
+
+  for (const model of models) {
+    try {
+      // Try both v1 and v1beta for each model
+      for (const version of ['v1', 'v1beta']) {
+        const response = await tryRequest(`https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${GEMINI_API_KEY}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) return text;
+        } else {
+          lastStatus = response.status;
+          lastErrorData = await response.json().catch(() => ({}));
+          console.warn(`[Fintrack] Gemini ${model} (${version}) failed:`, lastStatus);
+        }
+      }
+    } catch (e) {
+      console.error(`[Fintrack] Network error calling ${model}:`, e);
+    }
+  }
+
+  // If we reach here, all models failed
+  console.error('[Fintrack] All Gemini models failed. Last status:', lastStatus, lastErrorData);
   
-  // If 404, try v1beta
-  if (response.status === 404) {
-    response = await tryRequest(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`);
+  if (lastStatus === 401 || lastStatus === 403) {
+    throw new Error('INVALID_API_KEY');
   }
-
-  // If still 404, try the older pro model
-  if (response.status === 404) {
-    response = await tryRequest(`https://generativelanguage.googleapis.com/v1/models/gemini-1.0-pro:generateContent?key=${GEMINI_API_KEY}`);
+  if (lastStatus === 429) {
+    throw new Error('RATE_LIMIT_EXCEEDED');
   }
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    console.error('[Fintrack] Gemini API error:', response.status, errorData);
-    throw new Error(`Gemini API request failed: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  throw new Error(`API_ERROR_${lastStatus || 'UNKNOWN'}`);
 }
 
 export async function generateExpenseInsights(summary: MonthSummary, currency: string): Promise<AIInsight> {
@@ -115,7 +134,13 @@ Answer this question concisely (2-3 sentences max): "${question}"`;
 
   try {
     return await callGemini(prompt);
-  } catch {
-    return "I couldn't connect to the AI service right now. Please check your API key and try again.";
+  } catch (err: any) {
+    if (err.message === 'INVALID_API_KEY') {
+      return "Your AI API key seems invalid. Please check your .env file.";
+    }
+    if (err.message === 'RATE_LIMIT_EXCEEDED') {
+      return "The AI is a bit busy right now (rate limit reached). Please try again in a minute!";
+    }
+    return "I'm having trouble thinking right now. Please try again in a few seconds!";
   }
 }

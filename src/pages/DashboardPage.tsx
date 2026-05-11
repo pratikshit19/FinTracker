@@ -4,7 +4,8 @@ import {
   DollarSign, ShoppingCart, TrendingUp, Calendar, Plus
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { buildMonthSummary, formatCurrency } from '@/lib/utils';
+import { useCurrency } from '@/lib/CurrencyContext';
+import { buildMonthSummary } from '@/lib/utils';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { SpendingChart } from '@/components/dashboard/SpendingChart';
 import { CategoryBreakdown } from '@/components/dashboard/CategoryBreakdown';
@@ -14,14 +15,18 @@ import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { BudgetCard } from '@/components/dashboard/BudgetCard';
 import { GoalCard } from '@/components/dashboard/GoalCard';
-import { ChevronRight, ArrowRight } from 'lucide-react';
+import { ChevronRight, ArrowRight, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { FinancialHealthScore } from '@/components/dashboard/FinancialHealthScore';
+import { PredictiveBillCalendar } from '@/components/dashboard/PredictiveBillCalendar';
 import type { Expense, ExpenseInsert, Budget, Goal } from '@/types';
 
 export const DashboardPage = () => {
+  const { formatAmount } = useCurrency();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Expense | undefined>();
@@ -36,15 +41,17 @@ export const DashboardPage = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [expensesRes, budgetsRes, goalsRes] = await Promise.all([
+    const [expensesRes, budgetsRes, goalsRes, subsRes] = await Promise.all([
       supabase.from('expenses').select('*').eq('user_id', user.id).order('date', { ascending: false }),
-      supabase.from('budgets').select('*').eq('user_id', user.id).limit(2),
-      supabase.from('goals').select('*').eq('user_id', user.id).limit(1)
+      supabase.from('budgets').select('*').eq('user_id', user.id),
+      supabase.from('goals').select('*').eq('user_id', user.id),
+      supabase.from('subscriptions').select('*').eq('user_id', user.id).eq('status', 'active')
     ]);
 
     if (expensesRes.data) setExpenses(expensesRes.data as Expense[]);
     if (budgetsRes.data) setBudgets(budgetsRes.data as Budget[]);
     if (goalsRes.data) setGoals(goalsRes.data as Goal[]);
+    if (subsRes.data) setSubscriptions(subsRes.data);
     
     setLoading(false);
   }, []);
@@ -110,42 +117,83 @@ export const DashboardPage = () => {
         </div>
       ) : (
         <>
-          {/* Stat Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              title="Total Spent"
-              value={summary.totalSpent}
-              icon={<DollarSign size={16} />}
-              color="var(--accent)"
-              change={calcChange(summary.totalSpent, prevMonthSummary.totalSpent)}
-              index={0}
-            />
-            <StatCard
-              title="Transactions"
-              value={summary.transactionCount}
-              icon={<ShoppingCart size={16} />}
-              color="var(--success)"
-              change={calcChange(summary.transactionCount, prevMonthSummary.transactionCount)}
-              isCurrency={false}
-              index={1}
-            />
-            <StatCard
-              title="Avg per Day"
-              value={summary.avgPerDay}
-              icon={<TrendingUp size={16} />}
-              color="var(--warning)"
-              changeLabel="This month"
-              index={2}
-            />
-            <StatCard
-              title="This Month"
-              value={summary.totalSpent}
-              icon={<Calendar size={16} />}
-              color="var(--info)"
-              changeLabel={`Top: ${summary.topCategory}`}
-              index={3}
-            />
+          {/* Top Row: Core Insights (FGO & Calendar) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* FGO Health Score - Compact & Informative */}
+            <div className="lg:col-span-5 flex flex-col gap-4">
+              <FinancialHealthScore 
+                score={Math.min(100, Math.max(20, (
+                  (budgets.length > 0 ? (1 - (summary.totalSpent / (budgets.reduce((s,b) => s + b.monthly_limit, 0) || 1))) * 40 : 20) +
+                  (goals.length > 0 ? (goals.reduce((s,g) => s + (g.current_amount / g.target_amount), 0) / goals.length) * 40 : 20) +
+                  20
+                )))}
+                details={{
+                  savingsRatio: goals.length > 0 ? 85 : 40,
+                  budgetAdherence: budgets.length > 0 ? Math.min(100, (1 - (summary.totalSpent / (budgets.reduce((s,b) => s + b.monthly_limit, 0) || 1))) * 100) : 50,
+                  goalProgress: goals.length > 0 ? (goals.reduce((s,g) => s + (g.current_amount / g.target_amount), 0) / goals.length) * 100 : 30
+                }}
+              />
+              {/* Primary Stat as a sub-card */}
+              <div className="grid grid-cols-2 gap-4">
+                <StatCard
+                  title="Transactions"
+                  value={summary.transactionCount}
+                  icon={<ShoppingCart size={14} />}
+                  color="var(--success)"
+                  isCurrency={false}
+                  index={0}
+                />
+                <StatCard
+                  title="Avg/Day"
+                  value={summary.avgPerDay}
+                  icon={<TrendingUp size={14} />}
+                  color="var(--warning)"
+                  index={1}
+                />
+              </div>
+            </div>
+
+            {/* Bill Calendar - More Prominent */}
+            <div className="lg:col-span-7">
+              <PredictiveBillCalendar 
+                bills={subscriptions.map(s => ({
+                  id: s.id,
+                  name: s.name,
+                  amount: s.amount,
+                  date: s.next_billing,
+                  isHighImpact: s.amount > 1000
+                }))}
+              />
+            </div>
           </div>
+
+          {/* Quick Summary Bar - Optimized for Mobile */}
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="flex flex-wrap items-center gap-y-4 gap-x-6 p-5 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border)]"
+          >
+            <div className="flex items-center gap-2 w-full sm:w-auto pb-2 sm:pb-0 border-b sm:border-b-0 border-[var(--border)] sm:mr-2">
+              <div className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
+              <span className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">{monthName} Overview</span>
+            </div>
+            
+            <div className="flex flex-1 items-center justify-between sm:justify-start sm:gap-8">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-tighter">Total Outflow</span>
+                <span className="text-sm font-bold text-[var(--text-primary)]">{formatAmount(summary.totalSpent)}</span>
+              </div>
+              <div className="hidden sm:block h-8 w-px bg-[var(--border)]" />
+              <div className="flex flex-col">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-tighter">Top Category</span>
+                <span className="text-sm font-bold text-[var(--text-primary)]">{summary.topCategory}</span>
+              </div>
+              <div className="hidden sm:block h-8 w-px bg-[var(--border)]" />
+              <div className="flex flex-col">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-tighter">Budget Left</span>
+                <span className="text-sm font-bold text-[var(--success)]">{formatAmount(Math.max(0, budgets.reduce((s,b) => s + b.monthly_limit, 0) - summary.totalSpent))}</span>
+              </div>
+            </div>
+          </motion.div>
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

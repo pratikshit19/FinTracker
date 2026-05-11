@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, ArrowLeftRight, Sparkles, Settings, LogOut, TrendingUp, X, CreditCard, Target
+  LayoutDashboard, ArrowLeftRight, Sparkles, Settings, LogOut, TrendingUp, X, CreditCard, Target, Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard'  },
   { to: '/transactions',  icon: ArrowLeftRight,  label: 'Transactions' },
   { to: '/budgets',       icon: Target,          label: 'Budgets & Goals' },
+  { to: '/calendar',      icon: Calendar,        label: 'Bill Calendar' },
   { to: '/subscriptions', icon: CreditCard,       label: 'Subscriptions' },
   { to: '/insights',      icon: Sparkles,         label: 'AI Insights' },
   { to: '/settings',      icon: Settings,         label: 'Settings'   },
