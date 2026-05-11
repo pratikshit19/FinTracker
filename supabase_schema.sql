@@ -89,8 +89,8 @@ create policy "Users can delete own goals" on public.goals for delete using (aut
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, username, avatar_url)
-  values (new.id, split_part(new.email, '@', 1), null);
+  insert into public.profiles (id, username, avatar_url, currency)
+  values (new.id, split_part(new.email, '@', 1), null, 'INR');
   return new;
 end;
 $$ language plpgsql security definer;
