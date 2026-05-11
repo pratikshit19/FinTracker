@@ -84,7 +84,7 @@ export function buildRangeSummary(expenses: Expense[], months: number): MonthSum
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([date, amount]) => ({ date: formatDateShort(date), amount }));
 
-  return { totalSpent, transactionCount, avgPerDay, topCategory, categoryBreakdown, dailySpend };
+  return { totalSpent, transactionCount, avgPerDay, topCategory, categoryBreakdown, dailySpend, monthlyIncome: 0 };
 }
 
 export function buildMonthSummary(expenses: Expense[], year: number, month: number): MonthSummary {
@@ -114,5 +114,5 @@ export function buildMonthSummary(expenses: Expense[], year: number, month: numb
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([date, amount]) => ({ date: formatDateShort(date), amount }));
 
-  return { totalSpent, transactionCount, avgPerDay, topCategory, categoryBreakdown, dailySpend };
+  return { totalSpent, transactionCount, avgPerDay, topCategory, categoryBreakdown, dailySpend, monthlyIncome: 0 };
 }
