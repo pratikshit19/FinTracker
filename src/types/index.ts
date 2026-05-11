@@ -36,6 +36,7 @@ export interface MonthSummary {
   avgPerDay: number;
   categoryBreakdown: Record<string, number>;
   dailySpend: { date: string; amount: number }[];
+  monthlyIncome: number;
 }
 
 export interface AIInsight {
@@ -66,3 +67,12 @@ export interface Goal {
 }
 
 export type AuthMode = 'login' | 'signup';
+
+export interface Profile {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  currency: string;
+  monthly_income: number;
+  updated_at?: string;
+}

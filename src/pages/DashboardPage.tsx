@@ -19,6 +19,7 @@ import { ChevronRight, ArrowRight, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { FinancialHealthScore } from '@/components/dashboard/FinancialHealthScore';
 import { PredictiveBillCalendar } from '@/components/dashboard/PredictiveBillCalendar';
+import { MoneyFlowMap } from '@/components/dashboard/MoneyFlowMap';
 import type { Expense, ExpenseInsert, Budget, Goal } from '@/types';
 
 export const DashboardPage = () => {
@@ -27,6 +28,7 @@ export const DashboardPage = () => {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [monthlyIncome, setMonthlyIncome] = useState(0);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Expense | undefined>();
@@ -41,17 +43,19 @@ export const DashboardPage = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [expensesRes, budgetsRes, goalsRes, subsRes] = await Promise.all([
+    const [expensesRes, budgetsRes, goalsRes, subsRes, profileRes] = await Promise.all([
       supabase.from('expenses').select('*').eq('user_id', user.id).order('date', { ascending: false }),
       supabase.from('budgets').select('*').eq('user_id', user.id),
       supabase.from('goals').select('*').eq('user_id', user.id),
-      supabase.from('subscriptions').select('*').eq('user_id', user.id).eq('status', 'active')
+      supabase.from('subscriptions').select('*').eq('user_id', user.id).eq('status', 'active'),
+      supabase.from('profiles').select('monthly_income').eq('id', user.id).single()
     ]);
 
     if (expensesRes.data) setExpenses(expensesRes.data as Expense[]);
     if (budgetsRes.data) setBudgets(budgetsRes.data as Budget[]);
     if (goalsRes.data) setGoals(goalsRes.data as Goal[]);
     if (subsRes.data) setSubscriptions(subsRes.data);
+    if (profileRes.data) setMonthlyIncome(profileRes.data.monthly_income || 0);
     
     setLoading(false);
   }, []);
@@ -195,12 +199,43 @@ export const DashboardPage = () => {
             </div>
           </motion.div>
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2">
+          {/* Money Flow Map - High Impact Visual */}
+          <div className="w-full">
+            <MoneyFlowMap 
+              salary={monthlyIncome}
+              investments={goals.reduce((s, g) => s + (g.monthly_contribution || 0), 0)}
+              subscriptions={subscriptions.reduce((s, sub) => s + sub.amount, 0)}
+              budgets={budgets.reduce((s, b) => s + b.monthly_limit, 0)}
+              savings={goals.reduce((s, g) => s + (g.current_amount || 0), 0) / 12}
+            />
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-8">
               <SpendingChart data={summary.dailySpend} />
             </div>
-            <CategoryBreakdown breakdown={summary.categoryBreakdown} total={summary.totalSpent} />
+            <div className="lg:col-span-4 bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6">
+              <h3 className="font-bold text-[var(--text-primary)] mb-4">Cash Position</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[var(--text-muted)]">Monthly Income</span>
+                  <span className="text-sm font-bold text-[var(--text-primary)]">{formatAmount(monthlyIncome)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[var(--text-muted)]">Planned Outflow</span>
+                  <span className="text-sm font-bold text-[var(--danger)]">
+                    -{formatAmount(budgets.reduce((s, b) => s + b.monthly_limit, 0) + subscriptions.reduce((s, sub) => s + sub.amount, 0))}
+                  </span>
+                </div>
+                <div className="pt-4 border-t border-[var(--border)] flex justify-between items-center">
+                  <span className="text-xs font-bold text-[var(--text-primary)]">Leftover Buffer</span>
+                  <span className="text-sm font-bold text-[var(--success)]">
+                    {formatAmount(monthlyIncome - (budgets.reduce((s, b) => s + b.monthly_limit, 0) + subscriptions.reduce((s, sub) => s + sub.amount, 0)))}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Budgets & Goals Preview */}

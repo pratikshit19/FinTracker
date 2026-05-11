@@ -51,9 +51,10 @@ export const BudgetCard = ({ category, spent, limit, index = 0, onEdit }: Budget
           {onEdit && (
             <button 
               onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)] transition-all opacity-0 group-hover:opacity-100"
+              className="p-2 rounded-lg text-[var(--accent)] bg-[var(--accent-subtle)] hover:bg-[var(--accent)] hover:text-white transition-all shadow-sm"
+              title="Edit Budget"
             >
-              <Edit3 size={12} />
+              <Edit3 size={14} />
             </button>
           )}
         </div>

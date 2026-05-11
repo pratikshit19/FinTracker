@@ -28,6 +28,16 @@ create table if not exists public.subscriptions (
   created_at      timestamptz default now() not null
 );
 
+-- 3. Create profiles table (Added monthly_income)
+create table if not exists public.profiles (
+  id              uuid primary key references auth.users(id) on delete cascade,
+  username        text,
+  avatar_url      text,
+  currency        text default 'INR',
+  monthly_income  numeric(10,2) default 0,
+  updated_at      timestamptz default now()
+);
+
 -- 4. Create budgets table
 create table if not exists public.budgets (
   id              uuid primary key default gen_random_uuid(),
@@ -89,8 +99,8 @@ create policy "Users can delete own goals" on public.goals for delete using (aut
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, username, avatar_url, currency)
-  values (new.id, split_part(new.email, '@', 1), null, 'INR');
+  insert into public.profiles (id, username, avatar_url, currency, monthly_income)
+  values (new.id, split_part(new.email, '@', 1), null, 'INR', 0);
   return new;
 end;
 $$ language plpgsql security definer;

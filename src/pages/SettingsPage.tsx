@@ -16,15 +16,17 @@ export const SettingsPage = () => {
   const { currency, setCurrency } = useCurrency();
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
+  const [monthlyIncome, setMonthlyIncome] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [initialUsername, setInitialUsername] = useState('');
+  const [initialIncome, setInitialIncome] = useState('');
   const [initialAvatar, setInitialAvatar] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [msg, setMsg] = useState('');
 
-  const hasChanges = username !== initialUsername || avatarUrl !== initialAvatar;
+  const hasChanges = username !== initialUsername || avatarUrl !== initialAvatar || monthlyIncome !== initialIncome;
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -34,7 +36,7 @@ export const SettingsPage = () => {
         console.log('[Settings] Loading profile for user:', user.id);
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('username, avatar_url')
+          .select('username, avatar_url, monthly_income')
           .eq('id', user.id)
           .single();
         
@@ -43,8 +45,10 @@ export const SettingsPage = () => {
         } else if (profile) {
           console.log('[Settings] Profile loaded:', profile);
           setUsername(profile.username || '');
+          setMonthlyIncome(profile.monthly_income?.toString() || '0');
           setAvatarUrl(profile.avatar_url);
           setInitialUsername(profile.username || '');
+          setInitialIncome(profile.monthly_income?.toString() || '0');
           setInitialAvatar(profile.avatar_url);
         }
       }
@@ -64,7 +68,8 @@ export const SettingsPage = () => {
         .upsert({ 
           id: user.id, 
           username, 
-          avatar_url: avatarUrl, 
+          avatar_url: avatarUrl,
+          monthly_income: parseFloat(monthlyIncome) || 0,
           updated_at: new Date().toISOString() 
         });
       
@@ -74,6 +79,7 @@ export const SettingsPage = () => {
       } else {
         console.log('[Settings] Save successful');
         setInitialUsername(username);
+        setInitialIncome(monthlyIncome);
         setInitialAvatar(avatarUrl);
         setMsg('Profile updated successfully!');
         setTimeout(() => setMsg(''), 3000);
@@ -100,143 +106,164 @@ export const SettingsPage = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-lg">
+    <div className="flex flex-col gap-6 w-full max-w-5xl mx-auto">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-        <div className="h-9 w-9 rounded-xl bg-[var(--bg-elevated)] flex items-center justify-center">
-          <Settings size={16} className="text-[var(--text-secondary)]" />
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-[var(--bg-elevated)] flex items-center justify-center">
+            <Settings size={16} className="text-[var(--text-secondary)]" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Settings</h1>
+            <p className="text-sm text-[var(--text-muted)] mt-0.5">Manage your account and preferences</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold">Settings</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5">Manage your account</p>
-        </div>
+        <Button variant="outline" size="sm" onClick={handleSignOut} className="w-full sm:w-auto">
+          <LogOut size={13} /> Sign Out
+        </Button>
       </motion.div>
 
-      {/* Profile */}
-      <Card>
-        <CardHeader><CardTitle>Profile Details</CardTitle></CardHeader>
-        <CardContent className="flex flex-col gap-6">
-          <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6">
-            <AvatarUpload 
-              url={avatarUrl} 
-              onUpload={(url) => setAvatarUrl(url)} 
-            />
-            <div className="flex-1 flex flex-col gap-4 w-full">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          {/* Profile */}
+          <Card className="h-full">
+            <CardHeader><CardTitle>Profile Details</CardTitle></CardHeader>
+            <CardContent className="flex flex-col gap-6">
+              <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6">
+                <AvatarUpload 
+                  url={avatarUrl} 
+                  onUpload={(url) => setAvatarUrl(url)} 
+                />
+                <div className="flex-1 flex flex-col gap-4 w-full">
+                  <Input
+                    label="Username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="How should we call you?"
+                  />
+                  <Input
+                    label="Email"
+                    value={email}
+                    readOnly
+                    className="opacity-60 cursor-not-allowed"
+                  />
+                </div>
+              </div>
+              
+              <AnimatePresence>
+                {hasChanges && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    <Button 
+                      className="w-full gap-2" 
+                      onClick={handleUpdateProfile} 
+                      loading={profileLoading}
+                    >
+                      <Check size={16} /> Save Profile Changes
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <p className="text-[10px] text-[var(--text-muted)] text-center">
+                User ID: {email} · Email changes require re-authentication.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          {/* Preferences */}
+          <Card>
+            <CardHeader><CardTitle>Preferences</CardTitle></CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <Select value={currency} onValueChange={(val: any) => setCurrency(val)}>
+                <SelectTrigger label="Primary Currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 text-xs font-mono text-[var(--text-muted)]">{c.symbol}</span>
+                        <span>{c.name} ({c.code})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-[var(--text-muted)]">
+                This will update all dashboard values and transaction history.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Income Settings */}
+          <Card>
+            <CardHeader><CardTitle>Financial Profile</CardTitle></CardHeader>
+            <CardContent className="flex flex-col gap-4">
               <Input
-                label="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="How should we call you?"
+                label="Monthly Income"
+                type="number"
+                placeholder="e.g. 40000"
+                value={monthlyIncome}
+                onChange={(e) => setMonthlyIncome(e.target.value)}
+                leftIcon={<span className="text-xs font-bold text-[var(--text-muted)]">{CURRENCIES.find(c => c.code === currency)?.symbol || '$'}</span>}
               />
-              <Input
-                label="Email"
-                value={email}
-                readOnly
-                className="opacity-60 cursor-not-allowed"
-              />
-            </div>
-          </div>
-          
-          <AnimatePresence>
-            {hasChanges && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-              >
-                <Button 
-                  className="w-full gap-2" 
-                  onClick={handleUpdateProfile} 
-                  loading={profileLoading}
+              <p className="text-xs text-[var(--text-muted)]">
+                Setting your income helps FinTrace provide smarter budgeting advice and calculate your true savings potential.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Danger Zone */}
+          <Card className="border-[var(--danger)]/20">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={14} className="text-[var(--danger)]" />
+                <CardTitle className="text-[var(--danger)]">Danger Zone</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              {msg && (
+                <p className="text-xs text-[var(--success)] bg-[var(--success-subtle)] border border-[var(--success)]/20 rounded-[var(--radius-sm)] px-3 py-2">
+                  {msg}
+                </p>
+              )}
+              <div className="flex items-center justify-between p-3 rounded-[var(--radius-sm)] bg-[var(--danger-subtle)]/40 border border-[var(--danger)]/15">
+                <div>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">Delete All Expenses</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">Permanently delete all transaction data</p>
+                </div>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  loading={loading}
+                  onClick={handleDeleteAllExpenses}
                 >
-                  <Check size={16} /> Save Profile Changes
+                  <Trash2 size={13} />
+                  {deleteConfirm ? 'Confirm?' : 'Delete'}
                 </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <p className="text-[10px] text-[var(--text-muted)] text-center">
-            User ID: {email} · Email changes require re-authentication.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Preferences */}
-      <Card>
-        <CardHeader><CardTitle>Preferences</CardTitle></CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Select value={currency} onValueChange={(val: any) => setCurrency(val)}>
-            <SelectTrigger label="Primary Currency">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CURRENCIES.map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 text-xs font-mono text-[var(--text-muted)]">{c.symbol}</span>
-                    <span>{c.name} ({c.code})</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-[var(--text-muted)]">
-            This will update all dashboard values and transaction history.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Danger Zone */}
-      <Card className="border-[var(--danger)]/20">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={14} className="text-[var(--danger)]" />
-            <CardTitle className="text-[var(--danger)]">Danger Zone</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {msg && (
-            <p className="text-xs text-[var(--success)] bg-[var(--success-subtle)] border border-[var(--success)]/20 rounded-[var(--radius-sm)] px-3 py-2">
-              {msg}
-            </p>
-          )}
-          <div className="flex items-center justify-between p-3 rounded-[var(--radius-sm)] bg-[var(--danger-subtle)]/40 border border-[var(--danger)]/15">
-            <div>
-              <p className="text-sm font-medium text-[var(--text-primary)]">Delete All Expenses</p>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">Permanently delete all your transaction data</p>
-            </div>
-            <Button
-              variant="danger"
-              size="sm"
-              loading={loading}
-              onClick={handleDeleteAllExpenses}
-            >
-              <Trash2 size={13} />
-              {deleteConfirm ? 'Confirm?' : 'Delete'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Sign out */}
-      <Card>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-[var(--text-primary)]">Sign Out</p>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">End your current session</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleSignOut}>
-              <LogOut size={13} /> Sign Out
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Footer */}
-      <p className="text-xs text-[var(--text-muted)] text-center">
-        FinTrace v1.0 · Built with Supabase + Gemini AI
-      </p>
+      <div className="mt-8 pt-8 border-t border-[var(--border)] flex flex-col items-center gap-2">
+        <p className="text-xs text-[var(--text-muted)]">
+          FinTrace v1.0 · Built with Supabase + Gemini AI
+        </p>
+        <div className="flex items-center gap-4">
+          <Button variant="link" size="sm" className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-muted)]">Privacy Policy</Button>
+          <div className="h-3 w-px bg-[var(--border)]" />
+          <Button variant="link" size="sm" className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-muted)]">Terms of Service</Button>
+        </div>
+      </div>
     </div>
   );
 };

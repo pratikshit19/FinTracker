@@ -5,7 +5,7 @@ import {
   ArrowRight, ShieldCheck, TrendingDown, DollarSign, Trash2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { useCurrency } from '@/lib/CurrencyContext';
+import { useCurrency, CURRENCIES } from '@/lib/CurrencyContext';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -29,8 +29,9 @@ export const BudgetsPage = () => {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [monthlyIncome, setMonthlyIncome] = useState(0);
   const [loading, setLoading] = useState(true);
-  const { formatAmount } = useCurrency();
+  const { currency, formatAmount } = useCurrency();
 
   // Modal States
   const [budgetModal, setBudgetModal] = useState(false);
@@ -53,15 +54,17 @@ export const BudgetsPage = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [budgetsRes, goalsRes, expensesRes] = await Promise.all([
+    const [budgetsRes, goalsRes, expensesRes, profileRes] = await Promise.all([
       supabase.from('budgets').select('*').eq('user_id', user.id),
       supabase.from('goals').select('*').eq('user_id', user.id),
       supabase.from('expenses').select('*').eq('user_id', user.id),
+      supabase.from('profiles').select('monthly_income').eq('id', user.id).single(),
     ]);
 
     if (budgetsRes.data) setBudgets(budgetsRes.data);
     if (goalsRes.data) setGoals(goalsRes.data);
     if (expensesRes.data) setExpenses(expensesRes.data);
+    if (profileRes.data) setMonthlyIncome(profileRes.data.monthly_income || 0);
     setLoading(false);
   }, []);
 
@@ -74,6 +77,7 @@ export const BudgetsPage = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { error } = await supabase.from('budgets').upsert({
+        id: editingBudgetId || undefined, // Include ID if editing to ensure update
         user_id: user.id,
         category: budgetCategory,
         monthly_limit: parseFloat(budgetLimit)
@@ -95,6 +99,16 @@ export const BudgetsPage = () => {
     setBudgetLimit(budget.monthly_limit.toString());
     setEditingBudgetId(budget.id);
     setBudgetModal(true);
+  };
+
+  const handleDeleteBudget = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this budget?')) return;
+    const { error } = await supabase.from('budgets').delete().eq('id', id);
+    if (!error) {
+      await fetchData();
+      setBudgetModal(false);
+      setEditingBudgetId(null);
+    }
   };
 
   const handleCreateGoal = async (e: React.FormEvent) => {
@@ -227,16 +241,16 @@ export const BudgetsPage = () => {
             {activeTab === 'budgets' ? (
               <div className="flex flex-col gap-6">
                 {/* Budget Header Card */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="bg-gradient-to-br from-[var(--accent)] to-[var(--accent-hover)] text-white border-none overflow-hidden relative">
                     <CardContent className="pt-6 relative z-10">
-                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Monthly Budget</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Income Baseline</p>
                       <div className="text-3xl font-bold">
-                        {formatAmount(budgets.reduce((s, b) => s + b.monthly_limit, 0))}
+                        {formatAmount(monthlyIncome)}
                       </div>
                       <div className="flex items-center gap-2 mt-4 text-sm opacity-90">
-                        <Wallet size={14} />
-                        Allocated across {budgets.length} categories
+                        <DollarSign size={14} />
+                        Your monthly salary
                       </div>
                     </CardContent>
                     <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full translate-x-12 -translate-y-12 blur-3xl" />
@@ -244,17 +258,59 @@ export const BudgetsPage = () => {
 
                   <Card className="bg-[var(--bg-surface)] border-[var(--border)]">
                     <CardContent className="pt-6">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Remaining to Spend</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Total Budget</p>
                       <div className="text-3xl font-bold text-[var(--text-primary)]">
-                        {formatAmount(Math.max(0, budgets.reduce((s, b) => s + b.monthly_limit, 0) - summary.totalSpent))}
+                        {formatAmount(budgets.reduce((s, b) => s + b.monthly_limit, 0))}
                       </div>
                       <div className="flex items-center gap-1.5 mt-4">
-                        <AlertCircle size={14} className="text-[var(--warning)]" />
-                        <span className="text-sm text-[var(--text-secondary)]">Utilization: {((summary.totalSpent / (budgets.reduce((s, b) => s + b.monthly_limit, 0) || 1)) * 100).toFixed(0)}%</span>
+                        <Wallet size={14} className="text-[var(--accent)]" />
+                        <span className="text-sm text-[var(--text-secondary)]">Allocated across {budgets.length} cats</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className={cn(
+                    "bg-[var(--bg-surface)] border-[var(--border)]",
+                    (monthlyIncome - budgets.reduce((s, b) => s + b.monthly_limit, 0)) < 0 ? "border-[var(--danger)]/50" : ""
+                  )}>
+                    <CardContent className="pt-6">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Savings Buffer</p>
+                      <div className={cn(
+                        "text-3xl font-bold",
+                        (monthlyIncome - budgets.reduce((s, b) => s + b.monthly_limit, 0)) < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"
+                      )}>
+                        {formatAmount(monthlyIncome - budgets.reduce((s, b) => s + b.monthly_limit, 0))}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-4">
+                        <ShieldCheck size={14} className={cn(
+                          (monthlyIncome - budgets.reduce((s, b) => s + b.monthly_limit, 0)) < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"
+                        )} />
+                        <span className="text-sm text-[var(--text-secondary)]">Left for goals & savings</span>
                       </div>
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* Smart Tip Card */}
+                {monthlyIncome > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--accent)]/10 flex items-start gap-4"
+                  >
+                    <div className="h-10 w-10 shrink-0 rounded-full bg-[var(--accent-subtle)] flex items-center justify-center text-[var(--accent)]">
+                      <AlertCircle size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-[var(--text-primary)] mb-1">Smart Budgeting Tip</h4>
+                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                        {budgets.reduce((s, b) => s + b.monthly_limit, 0) > monthlyIncome * 0.7 
+                          ? `Warning: Your total budget is ${((budgets.reduce((s, b) => s + b.monthly_limit, 0) / monthlyIncome) * 100).toFixed(0)}% of your income. Financial experts recommend keeping essentials under 50% to maximize savings.`
+                          : `Great job! Your current budget leaves ${(((monthlyIncome - budgets.reduce((s, b) => s + b.monthly_limit, 0)) / monthlyIncome) * 100).toFixed(0)}% of your income for savings. You're well on your way to hitting your financial goals.`}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
 
                 {/* Budget Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -381,12 +437,40 @@ export const BudgetsPage = () => {
               placeholder="0.00"
               value={budgetLimit}
               onChange={(e) => setBudgetLimit(e.target.value)}
-              leftIcon={<DollarSign size={14} />}
+              leftIcon={<span className="text-xs font-bold text-[var(--text-muted)]">{CURRENCIES.find(c => c.code === currency)?.symbol || '$'}</span>}
               required
             />
-            <Button type="submit" className="w-full" loading={submitting}>
-              {editingBudgetId ? 'Update Budget' : 'Save Budget'}
-            </Button>
+            {monthlyIncome > 0 && budgetLimit && (
+              <div className="p-3 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)]">
+                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">
+                  <span>Remaining after this</span>
+                  <span className={(monthlyIncome - (budgets.filter(b => b.id !== editingBudgetId).reduce((s, b) => s + b.monthly_limit, 0) + parseFloat(budgetLimit))) < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"}>
+                    {formatAmount(monthlyIncome - (budgets.filter(b => b.id !== editingBudgetId).reduce((s, b) => s + b.monthly_limit, 0) + parseFloat(budgetLimit)))}
+                  </span>
+                </div>
+                <div className="h-1 w-full bg-[var(--bg-surface)] rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-[var(--accent)] transition-all duration-300"
+                    style={{ width: `${Math.min(100, ((budgets.filter(b => b.id !== editingBudgetId).reduce((s, b) => s + b.monthly_limit, 0) + parseFloat(budgetLimit)) / monthlyIncome) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <Button type="submit" className="flex-1" loading={submitting}>
+                {editingBudgetId ? 'Update Budget' : 'Save Budget'}
+              </Button>
+              {editingBudgetId && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="text-[var(--danger)] border-[var(--danger)]/20 hover:bg-[var(--danger-subtle)]"
+                  onClick={() => handleDeleteBudget(editingBudgetId)}
+                >
+                  <Trash2 size={16} />
+                </Button>
+              )}
+            </div>
           </form>
         </DialogContent>
       </Dialog>
