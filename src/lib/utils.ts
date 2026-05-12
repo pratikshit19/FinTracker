@@ -58,6 +58,22 @@ export const ALL_CATEGORIES: ExpenseCategory[] = [
   'Healthcare', 'Housing', 'Utilities', 'Education', 'Travel', 'Other',
 ];
 
+export function getCategoryColor(category: string): string {
+  return CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS] ?? '#6b7280';
+}
+
+export function getCategoryIcon(category: string): string {
+  return CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS] ?? '📦';
+}
+
+export function getAvailableCategories(expenses: Expense[]): ExpenseCategory[] {
+  const usedCategories = expenses.map(e => e.category);
+  const uniqueUsed = Array.from(new Set(usedCategories));
+  // Combine defaults and used ones, removing duplicates
+  return Array.from(new Set([...ALL_CATEGORIES, ...uniqueUsed])).sort();
+}
+
+
 export function buildRangeSummary(expenses: Expense[], months: number): MonthSummary {
   const now = new Date();
   const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);

@@ -10,7 +10,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/Select';
 import { Spinner } from '@/components/ui/Spinner';
-import { ALL_CATEGORIES, cn } from '@/lib/utils';
+import { ALL_CATEGORIES, cn, getAvailableCategories } from '@/lib/utils';
+
 import { useCurrency } from '@/lib/CurrencyContext';
 import type { Expense, ExpenseCategory, ExpenseInsert } from '@/types';
 
@@ -134,10 +135,11 @@ export const TransactionsPage = () => {
               </SelectTrigger>
               <SelectContent className="bg-[var(--bg-surface)] border-[var(--border)]">
                 <SelectItem value="all">All Categories</SelectItem>
-                {ALL_CATEGORIES.map(c => (
+                {getAvailableCategories(expenses).map(c => (
                   <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}
               </SelectContent>
+
             </Select>
           </div>
 

@@ -19,7 +19,8 @@ import {
 } from '@/components/ui/Select';
 import { BudgetCard } from '@/components/dashboard/BudgetCard';
 import { GoalCard } from '@/components/dashboard/GoalCard';
-import { ALL_CATEGORIES, buildMonthSummary, cn } from '@/lib/utils';
+import { ALL_CATEGORIES, buildMonthSummary, cn, getAvailableCategories } from '@/lib/utils';
+
 import type { Budget, Goal, Expense, ExpenseCategory } from '@/types';
 
 type TabType = 'budgets' | 'goals';
@@ -48,6 +49,11 @@ export const BudgetsPage = () => {
   const [goalCurrent, setGoalCurrent] = useState('');
   const [goalContribution, setGoalContribution] = useState('');
   const [goalDeadline, setGoalDeadline] = useState('');
+  
+  // Custom Category State for Budgets
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategoryName, setCustomCategoryName] = useState('');
+
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -79,9 +85,10 @@ export const BudgetsPage = () => {
       const { error } = await supabase.from('budgets').upsert({
         id: editingBudgetId || undefined, // Include ID if editing to ensure update
         user_id: user.id,
-        category: budgetCategory,
+        category: isCustomCategory ? customCategoryName.trim() : budgetCategory,
         monthly_limit: parseFloat(budgetLimit)
       }, { onConflict: 'user_id,category' });
+
       
       if (!error) {
         await fetchData();
@@ -89,7 +96,10 @@ export const BudgetsPage = () => {
         setBudgetCategory('');
         setBudgetLimit('');
         setEditingBudgetId(null);
+        setIsCustomCategory(false);
+        setCustomCategoryName('');
       }
+
     }
     setSubmitting(false);
   };
@@ -417,20 +427,49 @@ export const BudgetsPage = () => {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateBudget} className="space-y-4 pt-4">
-            <Select 
-              value={budgetCategory} 
-              onValueChange={(val) => setBudgetCategory(val as ExpenseCategory)}
-              disabled={!!editingBudgetId}
-            >
-              <SelectTrigger label="Category">
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                {ALL_CATEGORIES.map(cat => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Select 
+                value={isCustomCategory ? 'custom-new' : budgetCategory} 
+                onValueChange={(val) => {
+                  if (val === 'custom-new') {
+                    setIsCustomCategory(true);
+                  } else {
+                    setIsCustomCategory(false);
+                    setBudgetCategory(val as ExpenseCategory);
+                  }
+                }}
+                disabled={!!editingBudgetId}
+              >
+                <SelectTrigger label="Category">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getAvailableCategories(expenses).map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                  <SelectItem value="custom-new" className="text-[var(--accent)] font-medium border-t border-[var(--border)] mt-1">
+                    + Custom Category...
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              {isCustomCategory && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <Input
+                    placeholder="Enter custom category name"
+                    value={customCategoryName}
+                    onChange={(e) => setCustomCategoryName(e.target.value)}
+                    className="bg-[var(--bg-elevated)]"
+                    autoFocus
+                    required
+                  />
+                </motion.div>
+              )}
+            </div>
+
             <Input
               label="Monthly Limit"
               type="number"

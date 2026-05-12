@@ -1,6 +1,7 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/utils';
+import { getCategoryColor, getCategoryIcon } from '@/lib/utils';
+
 import type { ExpenseCategory } from '@/types';
 import { useCurrency } from '@/lib/CurrencyContext';
 
@@ -53,8 +54,9 @@ export const CategoryBreakdown = ({ breakdown, total }: CategoryBreakdownProps) 
                   {data.map((entry) => (
                     <Cell
                       key={entry.name}
-                      fill={CATEGORY_COLORS[entry.name as ExpenseCategory] ?? '#6b7280'}
+                      fill={getCategoryColor(entry.name)}
                     />
+
                   ))}
                 </Pie>
                   <Tooltip content={(props) => <CustomTooltip {...props} formatAmount={formatAmount} />} />
@@ -64,10 +66,10 @@ export const CategoryBreakdown = ({ breakdown, total }: CategoryBreakdownProps) 
             <div className="flex-1 flex flex-col gap-2 min-w-0">
               {data.slice(0, 5).map(({ name, value }) => {
                 const pct = total > 0 ? ((value / total) * 100).toFixed(0) : 0;
-                const color = CATEGORY_COLORS[name as ExpenseCategory] ?? '#6b7280';
                 return (
                   <div key={name} className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm shrink-0">{CATEGORY_ICONS[name as ExpenseCategory] ?? '📦'}</span>
+                    <span className="text-sm shrink-0">{getCategoryIcon(name)}</span>
+
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-center mb-0.5">
                         <span className="text-xs text-[var(--text-secondary)] truncate">{name}</span>
@@ -76,13 +78,15 @@ export const CategoryBreakdown = ({ breakdown, total }: CategoryBreakdownProps) 
                       <div className="h-1 rounded-full bg-[var(--bg-elevated)] overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${pct}%`, background: color }}
+                          style={{ width: `${pct}%`, background: getCategoryColor(name) }}
                         />
+
                       </div>
                     </div>
                   </div>
                 );
               })}
+
             </div>
           </div>
         )}

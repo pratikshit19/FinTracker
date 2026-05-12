@@ -32,7 +32,10 @@ export const TransactionForm = ({
     date:     defaultValues?.date     ?? today,
     notes:    defaultValues?.notes    ?? '',
   });
+  const [isCustom, setIsCustom] = useState(false);
+  const [customCategory, setCustomCategory] = useState('');
   const [errors, setErrors] = useState<Partial<Record<keyof ExpenseInsert, string>>>({});
+
 
   const isEditing = !!defaultValues;
 
@@ -41,6 +44,7 @@ export const TransactionForm = ({
     if (!form.title.trim()) e.title = 'Title is required';
     if (!form.amount || form.amount <= 0) e.amount = 'Amount must be greater than 0';
     if (!form.date) e.date = 'Date is required';
+    if (isCustom && !customCategory.trim()) e.category = 'Custom category name is required' as any;
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -48,8 +52,16 @@ export const TransactionForm = ({
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!validate()) return;
-    await onSubmit(form);
+    
+    const finalForm = {
+      ...form,
+      category: isCustom ? customCategory.trim() : form.category
+    };
+
+    await onSubmit(finalForm);
     setForm({ title: '', amount: 0, category: 'Other', date: today, notes: '' });
+    setIsCustom(false);
+    setCustomCategory('');
     setErrors({});
   };
 
@@ -100,19 +112,47 @@ export const TransactionForm = ({
             <label className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide flex items-center gap-1.5">
               <Tag size={12} /> Category
             </label>
-            <Select
-              value={form.category}
-              onValueChange={val => setForm(f => ({ ...f, category: val as ExpenseCategory }))}
-            >
-              <SelectTrigger id="category-select">
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {ALL_CATEGORIES.map(cat => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2">
+              <Select
+                value={isCustom ? 'custom-new' : form.category}
+                onValueChange={val => {
+                  if (val === 'custom-new') {
+                    setIsCustom(true);
+                  } else {
+                    setIsCustom(false);
+                    setForm(f => ({ ...f, category: val as ExpenseCategory }));
+                  }
+                }}
+              >
+                <SelectTrigger id="category-select">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_CATEGORIES.map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                  <SelectItem value="custom-new" className="text-[var(--accent)] font-medium border-t border-[var(--border)] mt-1">
+                    + Custom Category...
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              {isCustom && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <Input
+                    placeholder="Enter custom category name"
+                    value={customCategory}
+                    onChange={e => setCustomCategory(e.target.value)}
+                    error={errors.category as string}
+                    className="bg-[var(--bg-elevated)]"
+                    autoFocus
+                  />
+                </motion.div>
+              )}
+            </div>
           </div>
 
           <Textarea
@@ -132,6 +172,7 @@ export const TransactionForm = ({
               {isEditing ? 'Save Changes' : 'Add Expense'}
             </Button>
           </div>
+
         </form>
       </DialogContent>
     </Dialog>

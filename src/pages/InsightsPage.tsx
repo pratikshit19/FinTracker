@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { CATEGORY_COLORS } from '@/lib/utils';
+import { getCategoryColor } from '@/lib/utils';
+
 import type { Expense, AIInsight, ExpenseCategory } from '@/types';
 
 interface ChatMsg { role: 'user' | 'ai'; text: string }
@@ -188,10 +189,11 @@ export const InsightsPage = () => {
                         {catData.map((entry, index) => (
                           <Cell 
                             key={`cell-${index}`} 
-                            fill={CATEGORY_COLORS[entry.fullName as ExpenseCategory] ?? 'var(--accent)'} 
+                            fill={getCategoryColor(entry.fullName)} 
                           />
                         ))}
                       </Bar>
+
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>

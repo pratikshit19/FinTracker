@@ -3,7 +3,8 @@ import { Trash2, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { CATEGORY_COLORS, CATEGORY_ICONS, formatDate } from '@/lib/utils';
+import { getCategoryColor, getCategoryIcon, formatDate } from '@/lib/utils';
+
 import type { Expense, ExpenseCategory } from '@/types';
 import { useCurrency } from '@/lib/CurrencyContext';
 
@@ -37,8 +38,9 @@ export const RecentTransactions = ({
           <div className="divide-y divide-[var(--border-subtle)]">
             <AnimatePresence initial={false}>
               {displayed.map((expense, i) => {
-                const color = CATEGORY_COLORS[expense.category as ExpenseCategory] ?? '#6b7280';
-                const icon = CATEGORY_ICONS[expense.category as ExpenseCategory] ?? '📦';
+                const color = getCategoryColor(expense.category);
+                const icon = getCategoryIcon(expense.category);
+
                 return (
                   <motion.div
                     key={expense.id}
