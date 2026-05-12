@@ -84,9 +84,10 @@ export const SubscriptionsPage = () => {
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Subscriptions</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5">Manage your recurring payments</p>
+          <h1 className="text-2xl font-bold">Recurring Payments</h1>
+          <p className="text-sm text-[var(--text-muted)] mt-0.5">Manage your SIPs, family support, and subscriptions</p>
         </div>
+
         <div className="flex items-center gap-3">
           {/* View Toggle Switch in Header */}
           <div className="flex p-1 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border)]">
@@ -112,8 +113,9 @@ export const SubscriptionsPage = () => {
             ))}
           </div>
           <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} id="add-sub-btn" size="sm" className="hidden sm:flex">
-            <Plus size={15} /> Add Subscription
+            <Plus size={15} /> Add Payment
           </Button>
+
           <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} size="icon" className="sm:hidden">
             <Plus size={18} />
           </Button>
@@ -160,13 +162,14 @@ export const SubscriptionsPage = () => {
                 <div className="h-16 w-16 rounded-full bg-[var(--bg-elevated)] flex items-center justify-center mb-4">
                   <CreditCard size={32} className="text-[var(--text-muted)]" />
                 </div>
-                <h3 className="text-lg font-semibold">No {viewFilter} subscriptions</h3>
+                <h3 className="text-lg font-semibold">No {viewFilter} payments</h3>
                 <p className="text-sm text-[var(--text-muted)] max-w-xs mt-1">
-                  You don't have any {viewFilter} services tracked yet.
+                  You don't have any {viewFilter} recurring payments tracked yet.
                 </p>
                 <Button variant="outline" className="mt-6" onClick={() => { setEditTarget(undefined); setFormOpen(true); }}>
-                  Add {viewFilter} Subscription
+                  Add {viewFilter} Payment
                 </Button>
+
               </CardContent>
             </Card>
           ) : (
@@ -184,8 +187,12 @@ export const SubscriptionsPage = () => {
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-4">
                         <div className="h-12 w-12 rounded-xl bg-[var(--bg-elevated)] flex items-center justify-center text-xl">
-                          {sub.name.charAt(0)}
+                          {sub.category === 'Investment/SIP' ? '📈' : 
+                           sub.category === 'Family Support' ? '🏠' : 
+                           sub.category === 'Bill/Rent' ? '🧾' : 
+                           sub.name.charAt(0)}
                         </div>
+
                         <div>
                           <h3 className="font-bold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">{sub.name}</h3>
                           <p className="text-xs text-[var(--text-muted)]">{sub.category} • {sub.billing_cycle}</p>

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
+
 import { 
   Target, Wallet, Plus, AlertCircle, 
   ArrowRight, ShieldCheck, TrendingDown, DollarSign, Trash2
@@ -148,12 +150,20 @@ export const BudgetsPage = () => {
       if (!error) {
         await fetchData();
         setGoalModal(false);
+        setEditingGoalId(null);
         setGoalName('');
         setGoalTarget('');
         setGoalCurrent('');
         setGoalContribution('');
         setGoalDeadline('');
-        setEditingGoalId(null);
+
+        // Trigger Celebration
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#1b48db', '#22c55e', '#f59e0b', '#ffffff']
+        });
       }
     }
     setSubmitting(false);

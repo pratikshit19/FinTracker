@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { getCategoryColor } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/Skeleton';
+
 
 import type { Expense, AIInsight, ExpenseCategory } from '@/types';
 
@@ -109,8 +111,15 @@ export const InsightsPage = () => {
       </motion.div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-24"><Spinner size="lg" /></div>
+        <div className="space-y-6">
+          <Skeleton className="h-[250px] w-full rounded-[var(--radius-lg)]" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <Skeleton className="h-[200px] w-full rounded-[var(--radius-lg)]" />
+             <Skeleton className="h-[200px] w-full rounded-[var(--radius-lg)]" />
+          </div>
+        </div>
       ) : (
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left column */}
           <div className="lg:col-span-2 flex flex-col gap-6">

@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { useCurrency } from '@/lib/CurrencyContext';
+
 import { cn } from '@/lib/utils';
 
 interface StatCardProps {
@@ -25,40 +27,42 @@ export const StatCard = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.08, duration: 0.35, ease: 'easeOut' }}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: index * 0.05 }}
+      whileHover={{ y: -4, scale: 1.02 }}
+      className="h-full"
     >
-      <Card className="hover:border-[var(--border)] hover:bg-[var(--bg-hover)] transition-all duration-200 group">
-        <CardContent className="p-5">
-          <div className="flex items-start justify-between mb-4">
-            <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-widest">{title}</p>
-            <span
-              className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
-              style={{ background: `${color}20`, color }}
-            >
+      <Card className="h-full border-[var(--border)] bg-[var(--bg-surface)] hover:border-[var(--accent)]/40 hover:bg-[var(--bg-hover)]/50 transition-all cursor-pointer overflow-hidden group relative">
+        {/* Decorative background glow */}
+        <div 
+          className="absolute -right-4 -top-4 w-16 h-16 blur-2xl rounded-full opacity-0 group-hover:opacity-20 transition-opacity"
+          style={{ background: color }}
+        />
+        
+        <CardContent className="p-4 flex flex-col h-full justify-between">
+          <div className="flex justify-between items-start">
+            <div className="p-2 rounded-xl bg-[var(--bg-elevated)] text-[var(--text-primary)]" style={{ color }}>
               {icon}
-            </span>
-          </div>
-          <p className="text-2xl font-bold text-[var(--text-primary)] tracking-tight mb-1.5">
-            {isCurrency ? formatAmount(value) : value.toLocaleString()}
-          </p>
-          {!isNeutral && (
-            <div className={cn('flex items-center gap-1 text-xs font-medium', isPositive ? 'text-[var(--danger)]' : 'text-[var(--success)]')}>
-              {isPositive
-                ? <TrendingUp size={12} />
-                : change !== undefined && change < 0
-                  ? <TrendingDown size={12} />
-                  : <Minus size={12} />
-              }
-              <span>{Math.abs(change ?? 0).toFixed(1)}% {changeLabel ?? 'vs last month'}</span>
             </div>
-          )}
-          {isNeutral && changeLabel && (
-            <p className="text-xs text-[var(--text-muted)]">{changeLabel}</p>
-          )}
+            {!isNeutral && (
+              <Badge variant={isPositive ? 'danger' : 'success'} className="px-1.5 py-0 text-[10px]">
+                {isPositive ? '+' : '-'}{Math.abs(change ?? 0).toFixed(0)}%
+              </Badge>
+            )}
+          </div>
+          
+          <div className="mt-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1 truncate">
+              {title}
+            </p>
+            <p className="text-xl font-bold text-[var(--text-primary)] tracking-tight">
+              {isCurrency ? formatAmount(value) : value.toLocaleString()}
+            </p>
+          </div>
         </CardContent>
       </Card>
     </motion.div>
+
   );
 };

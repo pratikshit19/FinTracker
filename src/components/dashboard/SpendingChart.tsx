@@ -6,13 +6,14 @@ import { useCurrency } from '@/lib/CurrencyContext';
 
 interface SpendingChartProps {
   data: { date: string; amount: number }[];
+  height?: number;
 }
 
 const CustomTooltip = ({ active, payload, label, formatAmount }: any) => {
   if (active && payload?.length) {
     return (
       <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-sm)] px-3 py-2 shadow-[var(--shadow-lg)]">
-        <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
+        <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-tighter mb-1">{label}</p>
         <p className="text-sm font-semibold text-[var(--text-primary)]">
           {formatAmount(payload[0].value)}
         </p>
@@ -22,54 +23,51 @@ const CustomTooltip = ({ active, payload, label, formatAmount }: any) => {
   return null;
 };
 
-export const SpendingChart = ({ data }: SpendingChartProps) => {
+export const SpendingChart = ({ data, height = 220 }: SpendingChartProps) => {
   const { formatAmount, getCurrencySymbol } = useCurrency();
   const symbol = getCurrencySymbol();
 
+  if (data.length === 0) {
+    return (
+      <div className="flex items-center justify-center text-[var(--text-muted)] text-sm italic" style={{ height }}>
+        No transactions this month
+      </div>
+    );
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Daily Spending</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {data.length === 0 ? (
-          <div className="h-[200px] flex items-center justify-center text-[var(--text-muted)] text-sm">
-            No transactions yet this month
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="spendGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="var(--accent)" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis
-                dataKey="date"
-                tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
-                axisLine={false} tickLine={false}
-              />
-              <YAxis
-                tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
-                axisLine={false} tickLine={false}
-                tickFormatter={v => `${symbol}${v}`}
-              />
-              <Tooltip content={(props) => <CustomTooltip {...props} formatAmount={formatAmount} />} />
-              <Area
-                type="monotone"
-                dataKey="amount"
-                stroke="var(--accent)"
-                strokeWidth={2}
-                fill="url(#spendGrad)"
-                dot={false}
-                activeDot={{ r: 4, fill: 'var(--accent)', strokeWidth: 0 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
-      </CardContent>
-    </Card>
+    <ResponsiveContainer width="100%" height={height}>
+      <AreaChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+        <defs>
+          <linearGradient id="spendGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%"  stopColor="var(--accent)" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} opacity={0.5} />
+        <XAxis
+          dataKey="date"
+          tick={{ fill: 'var(--text-muted)', fontSize: 9 }}
+          axisLine={false} tickLine={false}
+          interval="preserveStartEnd"
+        />
+        <YAxis
+          tick={{ fill: 'var(--text-muted)', fontSize: 9 }}
+          axisLine={false} tickLine={false}
+          tickFormatter={v => `${symbol}${v}`}
+        />
+        <Tooltip content={(props) => <CustomTooltip {...props} formatAmount={formatAmount} />} />
+        <Area
+          type="monotone"
+          dataKey="amount"
+          stroke="var(--accent)"
+          strokeWidth={3}
+          fill="url(#spendGrad)"
+          dot={false}
+          activeDot={{ r: 5, fill: 'var(--accent)', strokeWidth: 2, stroke: 'var(--bg-surface)' }}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
   );
 };
+

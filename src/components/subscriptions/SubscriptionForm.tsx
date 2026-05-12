@@ -33,8 +33,9 @@ interface SubscriptionFormProps {
 const today = new Date().toISOString().split('T')[0];
 
 const SUB_CATEGORIES = [
-  'Entertainment', 'Gym', 'Cloud Storage', 'Software/SaaS', 'Education', 'Utility', 'Other'
+  'Entertainment', 'Investment/SIP', 'Family Support', 'Bill/Rent', 'Gym', 'Cloud Storage', 'Education', 'Other'
 ];
+
 
 export const SubscriptionForm = ({
   open, onOpenChange, onSubmit, defaultValues, loading
@@ -95,21 +96,23 @@ export const SubscriptionForm = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Subscription' : 'Add Subscription'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Recurring Payment' : 'Add Recurring Payment'}</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update your recurring payment details.' : 'Track a new subscription or membership.'}
+            {isEditing ? 'Update your recurring payment details.' : 'Track a new subscription, SIP, or family support payment.'}
           </DialogDescription>
         </DialogHeader>
 
+
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
-            label="Service Name"
-            placeholder="e.g. Netflix, Spotify, Gold's Gym"
+            label="Name / Service"
+            placeholder="e.g. Netflix, SIP to Nifty50, Rent"
             value={form.name}
             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             error={errors.name}
-            leftIcon={<CreditCard size={14} />}
+            leftIcon={<Repeat size={14} />}
           />
+
 
           <div className="grid grid-cols-2 gap-3">
             <Input
@@ -178,8 +181,9 @@ export const SubscriptionForm = ({
             </Button>
             <Button type="submit" className="flex-1" loading={loading}>
               <Plus size={15} />
-              {isEditing ? 'Save' : 'Add Subscription'}
+              {isEditing ? 'Save' : 'Add Payment'}
             </Button>
+
           </div>
         </form>
       </DialogContent>
