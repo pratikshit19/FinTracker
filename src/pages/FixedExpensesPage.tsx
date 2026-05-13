@@ -20,7 +20,7 @@ interface Subscription {
   status: 'active' | 'cancelled' | 'paused';
 }
 
-export const SubscriptionsPage = () => {
+export const FixedExpensesPage = () => {
   const { formatAmount } = useCurrency();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,8 +84,8 @@ export const SubscriptionsPage = () => {
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Recurring Payments</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5">Manage your SIPs, family support, and subscriptions</p>
+          <h1 className="text-2xl font-bold">Fixed Expenses</h1>
+          <p className="text-sm text-[var(--text-muted)] mt-0.5">Manage your SIPs, family support, and recurring fixed costs</p>
         </div>
 
         <div className="flex items-center gap-3">

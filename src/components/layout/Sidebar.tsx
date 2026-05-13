@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { to: '/transactions',  icon: ArrowLeftRight,  label: 'Transactions' },
   { to: '/budgets',       icon: Target,          label: 'Budgets & Goals' },
   { to: '/calendar',      icon: Calendar,        label: 'Bill Calendar' },
-  { to: '/subscriptions', icon: CreditCard,       label: 'Subscriptions' },
+  { to: '/fixed-expenses', icon: CreditCard,       label: 'Fixed Expenses' },
   { to: '/insights',      icon: Sparkles,         label: 'AI Insights' },
   { to: '/settings',      icon: Settings,         label: 'Settings'   },
 ];

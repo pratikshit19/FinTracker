@@ -70,7 +70,6 @@ const nodeTypes = {
 
 interface MoneyFlowMapProps {
   salary: number;
-  investments: number;
   subscriptions: number;
   budgets: number;
   savings: number;
@@ -78,12 +77,14 @@ interface MoneyFlowMapProps {
 
 export const MoneyFlowMap = ({ 
   salary = 40000, 
-  investments = 0, 
   subscriptions = 0, 
   budgets = 0, 
   savings = 0 
 }: MoneyFlowMapProps) => {
-  const leftover = Math.max(0, salary - (investments + subscriptions + budgets + savings));
+  const fixedCosts = subscriptions;
+  const personalBudgetBuffer = Math.max(0, salary - fixedCosts);
+  const savingsBuffer = Math.max(0, personalBudgetBuffer - budgets);
+  const leftover = Math.max(0, savingsBuffer - savings);
 
   const nodes = useMemo(() => [
     {
@@ -93,37 +94,36 @@ export const MoneyFlowMap = ({
       position: { x: 250, y: 0 },
     },
     {
-      id: 'investments',
+      id: 'fixedCosts',
       type: 'flowNode',
-      data: { label: 'Investments', amount: investments, icon: Target, targetPath: '/budgets' },
-      position: { x: 0, y: 120 },
+      data: { label: 'Fixed Expenses', amount: fixedCosts, icon: CreditCard, targetPath: '/fixed-expenses' },
+      position: { x: 110, y: 140 },
     },
     {
-      id: 'outflows',
+      id: 'buffer',
       type: 'flowNode',
-      data: { label: 'Fixed Costs', amount: subscriptions + budgets, icon: CreditCard, targetPath: '/budgets' },
-      position: { x: 500, y: 120 },
+      data: { label: 'Variable', amount: personalBudgetBuffer, icon: Wallet, targetPath: '/fixed-expenses' },
+      position: { x: 390, y: 140 },
     },
     {
-      id: 'savings',
+      id: 'savingsBuffer',
       type: 'flowNode',
-      data: { label: 'Savings Progress', amount: savings, icon: ShieldCheck, targetPath: '/budgets' },
-      position: { x: 250, y: 240 },
+      data: { label: 'Savings Buffer', amount: savingsBuffer, icon: ShieldCheck, targetPath: '/budgets' },
+      position: { x: 250, y: 300 },
     },
     {
       id: 'leftover',
       type: 'flowNode',
       data: { label: 'Cash Leftover', amount: leftover, icon: Wallet, type: 'sink', targetPath: '/transactions' },
-      position: { x: 250, y: 360 },
+      position: { x: 250, y: 420 },
     },
-  ], [salary, investments, subscriptions, budgets, savings, leftover]);
+  ], [salary, fixedCosts, personalBudgetBuffer, savingsBuffer, savings, leftover]);
 
   const edges = useMemo(() => [
-    { id: 'e1-2', source: 'salary', target: 'investments', animated: true, type: ConnectionLineType.SmoothStep, style: { stroke: 'var(--accent)', strokeWidth: 2 } },
-    { id: 'e1-3', source: 'salary', target: 'outflows', animated: true, type: ConnectionLineType.SmoothStep, style: { stroke: 'var(--accent)', strokeWidth: 2 } },
-    { id: 'e2-4', source: 'investments', target: 'savings', animated: true, type: ConnectionLineType.SmoothStep, style: { stroke: 'var(--border)', strokeWidth: 2 } },
-    { id: 'e3-4', source: 'outflows', target: 'savings', animated: true, type: ConnectionLineType.SmoothStep, style: { stroke: 'var(--border)', strokeWidth: 2 } },
-    { id: 'e4-5', source: 'savings', target: 'leftover', animated: true, type: ConnectionLineType.SmoothStep, style: { stroke: 'var(--success)', strokeWidth: 2 } },
+    { id: 'e1-2', source: 'salary', target: 'fixedCosts', animated: true, type: ConnectionLineType.SmoothStep, style: { stroke: 'var(--accent)', strokeWidth: 2 } },
+    { id: 'e1-3', source: 'salary', target: 'buffer', animated: true, type: ConnectionLineType.SmoothStep, style: { stroke: 'var(--accent)', strokeWidth: 2 } },
+    { id: 'e3-4', source: 'buffer', target: 'savingsBuffer', animated: true, type: ConnectionLineType.SmoothStep, style: { stroke: 'var(--border)', strokeWidth: 2 } },
+    { id: 'e4-5', source: 'savingsBuffer', target: 'leftover', animated: true, type: ConnectionLineType.SmoothStep, style: { stroke: 'var(--success)', strokeWidth: 2 } },
   ], []);
 
   return (

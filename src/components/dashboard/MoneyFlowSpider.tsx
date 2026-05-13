@@ -9,7 +9,6 @@ import { TrendingDown, Info } from 'lucide-react';
 
 interface MoneyFlowSpiderProps {
   salary: number;
-  investments: number;
   subscriptions: number;
   budgets: number;
   savings: number;
@@ -17,23 +16,22 @@ interface MoneyFlowSpiderProps {
 
 export const MoneyFlowSpider = ({ 
   salary = 40000, 
-  investments = 0, 
   subscriptions = 0, 
   budgets = 0, 
   savings = 0 
 }: MoneyFlowSpiderProps) => {
   const { formatAmount } = useCurrency();
 
-  // Normalize data for the spider chart (percentage of salary)
-  const leftover = Math.max(0, salary - (investments + subscriptions + budgets + savings));
-  
+  const fixedCosts = subscriptions;
+  const personalBudgetBuffer = Math.max(0, salary - fixedCosts);
+  const savingsBuffer = Math.max(0, personalBudgetBuffer - budgets);
+  const leftover = Math.max(0, savingsBuffer - savings);
+
   const data = [
     { subject: 'Income', A: 100, fullMark: 100, actual: salary },
-    { subject: 'Investments', A: (investments / salary) * 100, fullMark: 100, actual: investments },
-    { subject: 'Subscriptions', A: (subscriptions / salary) * 100, fullMark: 100, actual: subscriptions },
-    { subject: 'Budgeting', A: (budgets / salary) * 100, fullMark: 100, actual: budgets },
-    { subject: 'Goals', A: (savings / salary) * 100, fullMark: 100, actual: savings },
-    { subject: 'Leftover', A: (leftover / salary) * 100, fullMark: 100, actual: leftover },
+    { subject: 'Fixed Costs', A: (fixedCosts / salary) * 100, fullMark: 100, actual: fixedCosts },
+    { subject: 'Savings Buffer', A: (savingsBuffer / salary) * 100, fullMark: 100, actual: savingsBuffer },
+    { subject: 'Cash Leftover', A: (leftover / salary) * 100, fullMark: 100, actual: leftover },
   ];
 
   return (

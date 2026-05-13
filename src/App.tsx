@@ -10,7 +10,7 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { TransactionsPage } from '@/pages/TransactionsPage';
 import { InsightsPage } from '@/pages/InsightsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
-import { SubscriptionsPage } from '@/pages/SubscriptionsPage';
+import { FixedExpensesPage } from '@/pages/FixedExpensesPage';
 import { BudgetsPage } from '@/pages/BudgetsPage';
 import { CalendarPage } from '@/pages/CalendarPage';
 import { Spinner } from '@/components/ui/Spinner';
@@ -107,7 +107,7 @@ function App() {
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/budgets"      element={<BudgetsPage />} />
             <Route path="/calendar"     element={<CalendarPage />} />
-            <Route path="/subscriptions" element={<SubscriptionsPage />} />
+            <Route path="/fixed-expenses" element={<FixedExpensesPage />} />
             <Route path="/insights"     element={<InsightsPage />} />
             <Route path="/settings"     element={<SettingsPage />} />
             <Route path="*"             element={<Navigate to="/dashboard" replace />} />

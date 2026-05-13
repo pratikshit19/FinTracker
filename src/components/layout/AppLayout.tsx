@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 const BOTTOM_NAV = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Home'      },
   { to: '/transactions',  icon: ArrowLeftRight,  label: 'Expenses'  },
-  { to: '/subscriptions', icon: CreditCard,       label: 'Subs'      },
+  { to: '/fixed-expenses', icon: CreditCard,       label: 'Fixed Expenses'  },
   { to: '/insights',      icon: Sparkles,        label: 'Insights'  },
   { to: '/settings',      icon: Settings,        label: 'Settings'  },
 ];

@@ -27,11 +27,20 @@ import type { Budget, Goal, Expense, ExpenseCategory } from '@/types';
 
 type TabType = 'budgets' | 'goals';
 
+type BillingCycle = 'weekly' | 'monthly' | 'yearly';
+
+type Subscription = {
+  amount: number;
+  billing_cycle: BillingCycle;
+  status: 'active' | 'cancelled' | 'paused';
+};
+
 export const BudgetsPage = () => {
   const [activeTab, setActiveTab] = useState<TabType>('budgets');
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [monthlyIncome, setMonthlyIncome] = useState(0);
   const [loading, setLoading] = useState(true);
   const { currency, formatAmount } = useCurrency();
@@ -62,16 +71,18 @@ export const BudgetsPage = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [budgetsRes, goalsRes, expensesRes, profileRes] = await Promise.all([
+    const [budgetsRes, goalsRes, expensesRes, subscriptionsRes, profileRes] = await Promise.all([
       supabase.from('budgets').select('*').eq('user_id', user.id),
       supabase.from('goals').select('*').eq('user_id', user.id),
       supabase.from('expenses').select('*').eq('user_id', user.id),
+      supabase.from('subscriptions').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('profiles').select('monthly_income').eq('id', user.id).single(),
     ]);
 
     if (budgetsRes.data) setBudgets(budgetsRes.data);
     if (goalsRes.data) setGoals(goalsRes.data);
     if (expensesRes.data) setExpenses(expensesRes.data);
+    if (subscriptionsRes.data) setSubscriptions(subscriptionsRes.data as Subscription[]);
     if (profileRes.data) setMonthlyIncome(profileRes.data.monthly_income || 0);
     setLoading(false);
   }, []);
@@ -187,12 +198,26 @@ export const BudgetsPage = () => {
 
   const now = new Date();
   const summary = buildMonthSummary(expenses, now.getFullYear(), now.getMonth());
+  const fixedExpenses = subscriptions.reduce((sum, sub) => {
+    if (sub.billing_cycle === 'monthly') return sum + sub.amount;
+    if (sub.billing_cycle === 'yearly') return sum + sub.amount / 12;
+    if (sub.billing_cycle === 'weekly') return sum + sub.amount * 4.33;
+    return sum;
+  }, 0);
+  const personalBudgetBuffer = monthlyIncome - fixedExpenses;
+  const allocatedBudget = budgets.reduce((s, b) => s + b.monthly_limit, 0);
+  const savingsBuffer = personalBudgetBuffer - allocatedBudget;
+  const budgetUsageRatio = personalBudgetBuffer > 0 ? allocatedBudget / personalBudgetBuffer : 0;
+  const savingsRatio = personalBudgetBuffer > 0 ? savingsBuffer / personalBudgetBuffer : 0;
+  const previewAllocatedBudget = budgets.filter(b => b.id !== editingBudgetId).reduce((s, b) => s + b.monthly_limit, 0) + parseFloat(budgetLimit || '0');
+  const previewRemainingBudget = personalBudgetBuffer - previewAllocatedBudget;
+  const previewUsageRatio = personalBudgetBuffer > 0 ? previewAllocatedBudget / personalBudgetBuffer : 0;
 
   return (
     <div className="flex flex-col gap-6 pb-12">
       {/* Page Title */}
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Financial Planner</h1>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Budgets & Goals</h1>
         <p className="text-sm text-[var(--text-muted)]">Organize your spending and plan for your future</p>
       </div>
 
@@ -264,13 +289,13 @@ export const BudgetsPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="bg-gradient-to-br from-[var(--accent)] to-[var(--accent-hover)] text-white border-none overflow-hidden relative">
                     <CardContent className="pt-6 relative z-10">
-                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Income Baseline</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Personal Budget Buffer</p>
                       <div className="text-3xl font-bold">
-                        {formatAmount(monthlyIncome)}
+                        {formatAmount(personalBudgetBuffer)}
                       </div>
                       <div className="flex items-center gap-2 mt-4 text-sm opacity-90">
                         <DollarSign size={14} />
-                        Your monthly salary
+                        After fixed expenses and subscriptions
                       </div>
                     </CardContent>
                     <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full translate-x-12 -translate-y-12 blur-3xl" />
@@ -278,34 +303,34 @@ export const BudgetsPage = () => {
 
                   <Card className="bg-[var(--bg-surface)] border-[var(--border)]">
                     <CardContent className="pt-6">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Total Budget</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Overall Allocated Budget</p>
                       <div className="text-3xl font-bold text-[var(--text-primary)]">
                         {formatAmount(budgets.reduce((s, b) => s + b.monthly_limit, 0))}
                       </div>
                       <div className="flex items-center gap-1.5 mt-4">
                         <Wallet size={14} className="text-[var(--accent)]" />
-                        <span className="text-sm text-[var(--text-secondary)]">Allocated across {budgets.length} cats</span>
+                        <span className="text-sm text-[var(--text-secondary)]">Allocated across {budgets.length} categories</span>
                       </div>
                     </CardContent>
                   </Card>
 
                   <Card className={cn(
                     "bg-[var(--bg-surface)] border-[var(--border)]",
-                    (monthlyIncome - budgets.reduce((s, b) => s + b.monthly_limit, 0)) < 0 ? "border-[var(--danger)]/50" : ""
+                    savingsBuffer < 0 ? "border-[var(--danger)]/50" : ""
                   )}>
                     <CardContent className="pt-6">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Savings Buffer</p>
                       <div className={cn(
                         "text-3xl font-bold",
-                        (monthlyIncome - budgets.reduce((s, b) => s + b.monthly_limit, 0)) < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"
+                        savingsBuffer < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"
                       )}>
-                        {formatAmount(monthlyIncome - budgets.reduce((s, b) => s + b.monthly_limit, 0))}
+                        {formatAmount(savingsBuffer)}
                       </div>
                       <div className="flex items-center gap-1.5 mt-4">
                         <ShieldCheck size={14} className={cn(
-                          (monthlyIncome - budgets.reduce((s, b) => s + b.monthly_limit, 0)) < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"
+                          savingsBuffer < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"
                         )} />
-                        <span className="text-sm text-[var(--text-secondary)]">Left for goals & savings</span>
+                        <span className="text-sm text-[var(--text-secondary)]">After allocated budgets are accounted for</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -324,9 +349,9 @@ export const BudgetsPage = () => {
                     <div>
                       <h4 className="text-sm font-bold text-[var(--text-primary)] mb-1">Smart Budgeting Tip</h4>
                       <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                        {budgets.reduce((s, b) => s + b.monthly_limit, 0) > monthlyIncome * 0.7 
-                          ? `Warning: Your total budget is ${((budgets.reduce((s, b) => s + b.monthly_limit, 0) / monthlyIncome) * 100).toFixed(0)}% of your income. Financial experts recommend keeping essentials under 50% to maximize savings.`
-                          : `Great job! Your current budget leaves ${(((monthlyIncome - budgets.reduce((s, b) => s + b.monthly_limit, 0)) / monthlyIncome) * 100).toFixed(0)}% of your income for savings. You're well on your way to hitting your financial goals.`}
+                        {budgetUsageRatio > 0.7 
+                          ? `Warning: You've allocated ${(budgetUsageRatio * 100).toFixed(0)}% of your personal budget buffer to categories. Keep more room for actual savings.`
+                          : `Nice work! You have ${((1 - budgetUsageRatio) * 100).toFixed(0)}% of your personal buffer still available to save.`}
                       </p>
                     </div>
                   </motion.div>
@@ -493,14 +518,14 @@ export const BudgetsPage = () => {
               <div className="p-3 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)]">
                 <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">
                   <span>Remaining after this</span>
-                  <span className={(monthlyIncome - (budgets.filter(b => b.id !== editingBudgetId).reduce((s, b) => s + b.monthly_limit, 0) + parseFloat(budgetLimit))) < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"}>
-                    {formatAmount(monthlyIncome - (budgets.filter(b => b.id !== editingBudgetId).reduce((s, b) => s + b.monthly_limit, 0) + parseFloat(budgetLimit)))}
+                  <span className={(previewRemainingBudget) < 0 ? "text-[var(--danger)]" : "text-[var(--success)]"}>
+                    {formatAmount(previewRemainingBudget)}
                   </span>
                 </div>
                 <div className="h-1 w-full bg-[var(--bg-surface)] rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-[var(--accent)] transition-all duration-300"
-                    style={{ width: `${Math.min(100, ((budgets.filter(b => b.id !== editingBudgetId).reduce((s, b) => s + b.monthly_limit, 0) + parseFloat(budgetLimit)) / monthlyIncome) * 100)}%` }}
+                    style={{ width: `${Math.min(100, previewUsageRatio * 100)}%` }}
                   />
                 </div>
               </div>

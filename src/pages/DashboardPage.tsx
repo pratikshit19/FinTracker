@@ -211,7 +211,6 @@ export const DashboardPage = () => {
           <div className="md:col-span-12 lg:col-span-8">
             <MoneyFlowMap
               salary={monthlyIncome}
-              investments={goals.reduce((s, g) => s + (g.monthly_contribution || 0), 0)}
               subscriptions={subscriptions.reduce((s, sub) => s + sub.amount, 0)}
               budgets={budgets.reduce((s, b) => s + b.monthly_limit, 0)}
               savings={goals.reduce((s, g) => s + (g.current_amount || 0), 0) / 12}
