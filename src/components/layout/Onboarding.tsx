@@ -13,7 +13,7 @@ interface OnboardingStep {
 const STEPS: OnboardingStep[] = [
   {
     title: "Smart Tracking",
-    description: "Automatically categorize your spending with AI-powered scanning. Just snap a photo of any receipt and let our system do the heavy lifting for you.",
+    description: "Automatically categorize your spending with AI-Powered Scanning. Just snap a photo of any receipt and let our system do the heavy lifting for you.",
     image: "/onboarding_smart_tracking_1778411423492.png",
   },
   {
