@@ -12,7 +12,6 @@ import { InsightsPage } from '@/pages/InsightsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { FixedExpensesPage } from '@/pages/FixedExpensesPage';
 import { BudgetsPage } from '@/pages/BudgetsPage';
-import { CalendarPage } from '@/pages/CalendarPage';
 import { Spinner } from '@/components/ui/Spinner';
 import { SplashScreen } from '@/components/layout/SplashScreen';
 import { Onboarding } from '@/components/layout/Onboarding';
@@ -106,7 +105,6 @@ function App() {
             <Route path="/dashboard"    element={<DashboardPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/budgets"      element={<BudgetsPage />} />
-            <Route path="/calendar"     element={<CalendarPage />} />
             <Route path="/fixed-expenses" element={<FixedExpensesPage />} />
             <Route path="/insights"     element={<InsightsPage />} />
             <Route path="/settings"     element={<SettingsPage />} />

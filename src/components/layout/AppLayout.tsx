@@ -80,24 +80,28 @@ export const AppLayout = () => {
       </main>
 
       {/* ── Mobile bottom nav ─────────────────────────────── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center bg-[var(--bg-surface)]/95 backdrop-blur-md border-t border-[var(--border)] safe-area-pb w-full">
+      <nav
+        aria-label="Primary mobile navigation"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-30 mx-auto flex items-center justify-between gap-1 rounded-t-[1.25rem] bg-[var(--bg-surface)]/98 backdrop-blur-xl border-t border-[var(--border)] shadow-[0_-10px_40px_rgba(15,23,42,0.08)] safe-area-pb px-2 py-2 w-full max-w-5xl"
+      >
         {BOTTOM_NAV.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
+            title={label}
             className={({ isActive }) =>
               cn(
-                'flex-1 flex flex-col items-center gap-0 py-2 px-1 text-[10px] font-medium transition-colors min-w-0',
+                'group flex-1 min-w-0 rounded-3xl px-2 py-2 transition duration-200 ease-out text-[10px] font-semibold flex flex-col items-center justify-center gap-1',
                 isActive
-                  ? 'text-[var(--accent)]'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                  ? 'bg-[var(--accent)]/10 text-[var(--accent)] shadow-sm'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
               )
             }
           >
             {({ isActive }) => (
               <>
                 <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
-                <span>{label}</span>
+                <span className="truncate">{label}</span>
               </>
             )}
           </NavLink>

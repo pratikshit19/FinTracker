@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, CreditCard, Calendar, Repeat, ArrowRight } from 'lucide-react';
+import { Plus, CreditCard, Calendar, Repeat, ArrowRight, ChevronLeft, ChevronRight, AlertTriangle, List } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/lib/CurrencyContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
-import { formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { SubscriptionForm, type SubscriptionInsert } from '@/components/subscriptions/SubscriptionForm';
 
 interface Subscription {
@@ -28,6 +28,8 @@ export const FixedExpensesPage = () => {
   const [editTarget, setEditTarget] = useState<Subscription | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [viewFilter, setViewFilter] = useState<'monthly' | 'yearly'>('monthly');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   const fetchSubscriptions = useCallback(async () => {
     setLoading(true);
@@ -74,50 +76,39 @@ export const FixedExpensesPage = () => {
       return acc;
     }, 0);
 
-  const filteredSubs = subscriptions.filter(s => {
+  const activeSubscriptions = subscriptions.filter(s => s.status === 'active');
+  const filteredSubs = activeSubscriptions.filter(s => {
     if (viewFilter === 'monthly') return s.billing_cycle === 'monthly' || s.billing_cycle === 'weekly';
     return s.billing_cycle === 'yearly';
   });
 
+  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+  const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
+  const blanks = Array.from({ length: firstDayOfMonth }, (_, i) => i);
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
+  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
+
+  const getSubscriptionsForDay = (day: number) => {
+    return filteredSubs.filter(s => {
+      const billDate = new Date(s.next_billing);
+      return billDate.getDate() === day;
+    });
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Fixed Expenses</h1>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">Manage your SIPs, family support, and recurring fixed costs</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* View Toggle Switch in Header */}
-          <div className="flex p-1 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border)]">
-            {(['monthly', 'yearly'] as const).map((view) => (
-              <button
-                key={view}
-                onClick={() => setViewFilter(view)}
-                className={`relative px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
-                  viewFilter === view 
-                    ? 'text-white' 
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                }`}
-              >
-                {viewFilter === view && (
-                  <motion.div
-                    layoutId="view-toggle"
-                    className="absolute inset-0 bg-[var(--accent)] rounded-lg shadow-sm"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <span className="relative z-10 capitalize">{view}</span>
-              </button>
-            ))}
-          </div>
-          <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} id="add-sub-btn" size="sm" className="hidden sm:flex">
+        <div className="flex justify-end w-full xl:w-auto">
+          <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} id="add-sub-btn" size="sm" className="h-8 gap-2 w-full sm:w-auto">
             <Plus size={15} /> Add Payment
-          </Button>
-
-          <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} size="icon" className="sm:hidden">
-            <Plus size={18} />
           </Button>
         </div>
       </motion.div>
@@ -128,7 +119,7 @@ export const FixedExpensesPage = () => {
           <CardContent className="p-5 flex flex-col gap-1">
             <p className="text-xs font-medium uppercase tracking-wider opacity-80">Total Monthly</p>
             <p className="text-3xl font-bold">{formatAmount(totalMonthly)}</p>
-            <p className="text-xs opacity-70 mt-1">Across {subscriptions.length} active services</p>
+            <p className="text-xs opacity-70 mt-1">Across {activeSubscriptions.length} active services</p>
           </CardContent>
         </Card>
         
@@ -150,9 +141,162 @@ export const FixedExpensesPage = () => {
         </Card>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex flex-shrink-0 rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] p-1">
+          {(['list', 'calendar'] as const).map((mode) => {
+            const Icon = mode === 'list' ? List : Calendar;
+            return (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                aria-label={mode === 'list' ? 'List view' : 'Calendar view'}
+                className={`relative flex h-8 w-9 shrink-0 items-center justify-center rounded-md transition-all duration-200 ${
+                  viewMode === mode
+                    ? 'bg-[var(--accent)] text-white shadow-sm'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]'
+                }`}
+              >
+                {viewMode === mode && (
+                  <motion.div
+                    layoutId="view-toggle"
+                    className="absolute inset-0 rounded-md"
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.45 }}
+                  />
+                )}
+                <Icon size={14} className="relative z-10" />
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="inline-flex flex-shrink-0 flex-wrap items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] p-1">
+          {(['monthly', 'yearly'] as const).map((view) => (
+            <button
+              key={view}
+              onClick={() => setViewFilter(view)}
+              className={`relative min-w-[76px] h-8 rounded-md px-3 text-[11px] font-semibold transition-all duration-200 ${
+                viewFilter === view
+                  ? 'text-white'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+              }`}
+            >
+              {viewFilter === view && (
+                <motion.div
+                  layoutId="frequency-toggle"
+                  className="absolute inset-0 bg-[var(--accent)] rounded-md shadow-sm"
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.45 }}
+                />
+              )}
+              <span className="relative z-10 capitalize">{view}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <Spinner size="lg" />
+        </div>
+      ) : viewMode === 'calendar' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <Card className="lg:col-span-2 border-[var(--border)] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--border)] bg-[var(--bg-elevated)]/50">
+              <div className="text-sm font-semibold">{currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth}><ChevronLeft size={16} /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMonth}><ChevronRight size={16} /></Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-7 border-b border-[var(--border)] bg-[var(--bg-elevated)]/50">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                <div key={d} className="py-3 text-center text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{d}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7">
+              {blanks.map(b => (
+                <div key={`blank-${b}`} className="aspect-square border-b border-r border-[var(--border)] bg-[var(--bg-base)]/20" />
+              ))}
+              {days.map(day => {
+                const daySubs = getSubscriptionsForDay(day);
+                const isToday = day === new Date().getDate() && currentDate.getMonth() === new Date().getMonth();
+
+                return (
+                  <div key={day} className={cn(
+                    "aspect-square border-b border-r border-[var(--border)] p-1 sm:p-2 relative group hover:bg-[var(--bg-elevated)] transition-colors",
+                    isToday && "bg-[var(--accent-subtle)]"
+                  )}>
+                    <span className={cn(
+                      "text-[10px] font-bold",
+                      isToday ? "text-[var(--accent)]" : "text-[var(--text-muted)]"
+                    )}>{day}</span>
+                    <div className="mt-1 flex flex-col gap-0.5 overflow-hidden">
+                      {daySubs.map(s => (
+                        <div key={s.id} className="h-1.5 sm:h-2 w-full rounded-full bg-[var(--accent)] opacity-80" title={s.name} />
+                      ))}
+                    </div>
+                    {daySubs.length > 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--bg-elevated)]/90 p-2 z-10 pointer-events-none">
+                        <div className="text-[8px] font-bold text-center">
+                          {daySubs.length} bill{daySubs.length > 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <div className="space-y-4">
+            <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
+              <Calendar size={16} className="text-[var(--accent)]" />
+              Month Summary
+            </h3>
+            <Card>
+              <CardContent className="p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--text-muted)]">Total Bills</span>
+                  <span className="text-sm font-bold text-[var(--text-primary)]">
+                    {formatAmount(filteredSubs.reduce((acc, s) => acc + s.amount, 0))}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--text-muted)]">Active Services</span>
+                  <span className="text-sm font-bold text-[var(--text-primary)]">{filteredSubs.length}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2 mt-6">
+              <AlertTriangle size={16} className="text-[var(--danger)]" />
+              Upcoming Danger Zones
+            </h3>
+            <div className="space-y-3">
+              {filteredSubs
+                .sort((a, b) => new Date(a.next_billing).getDate() - new Date(b.next_billing).getDate())
+                .slice(0, 4)
+                .map(sub => (
+                  <div key={sub.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)]">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-[var(--bg-surface)] flex items-center justify-center text-xs font-bold border border-[var(--border)]">
+                        {new Date(sub.next_billing).getDate()}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold">{sub.name}</p>
+                        <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-tighter">{sub.billing_cycle}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs font-bold text-[var(--accent)]">{formatAmount(sub.amount)}</p>
+                  </div>
+                ))}
+              {filteredSubs.length === 0 && (
+                <div className="p-8 text-center border border-dashed border-[var(--border)] rounded-2xl">
+                  <CreditCard size={24} className="mx-auto text-[var(--text-muted)] mb-2" />
+                  <p className="text-xs text-[var(--text-muted)]">No recurring bills found.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

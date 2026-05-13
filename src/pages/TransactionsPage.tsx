@@ -144,25 +144,34 @@ export const TransactionsPage = () => {
             {filtered.length} records · Total: {formatAmount(totalFiltered)}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={exportToCSV} className="hidden md:flex gap-2">
-            <Download size={15} /> Export
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <Button variant="outline" size="icon" onClick={exportToCSV} className="flex md:hidden p-2">
+            <Upload size={16} />
           </Button>
-          <div className="relative hidden md:block">
+          <Button variant="outline" size="sm" onClick={exportToCSV} className="hidden md:flex gap-2">
+            <Upload size={15} /> Export
+          </Button>
+
+          <div className="relative">
             <input
               type="file"
               accept=".csv"
               className="absolute inset-0 opacity-0 cursor-pointer"
               onChange={(e) => e.target.files?.[0] && importFromCSV(e.target.files[0])}
+              aria-label="Import transactions from CSV"
             />
-            <Button variant="outline" size="sm" className="gap-2">
-              <Upload size={15} /> Import
+            <Button variant="outline" size="icon" className="flex md:hidden p-2">
+              <Download size={16} />
+            </Button>
+            <Button variant="outline" size="sm" className="hidden md:flex gap-2">
+              <Download size={15} /> Import
             </Button>
           </div>
-          <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} id="add-transaction-btn" size="sm" className="hidden sm:flex">
+
+          <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} id="add-transaction-btn" size="sm" className="hidden sm:flex gap-2">
             <Plus size={15} /> Add Transaction
           </Button>
-          <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} size="icon" className="sm:hidden">
+          <Button onClick={() => { setEditTarget(undefined); setFormOpen(true); }} size="icon" className="sm:hidden p-2">
             <Plus size={18} />
           </Button>
         </div>
@@ -204,13 +213,13 @@ export const TransactionsPage = () => {
           </div>
 
           {/* Sort Buttons Row */}
-          <div className="flex items-center gap-1.5 p-1 bg-[var(--bg-elevated)]/30 rounded-xl border border-[var(--border)] overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1.5 p-1 bg-[var(--bg-elevated)]/30 rounded-md border border-[var(--border)] overflow-x-auto no-scrollbar">
             {(['date', 'amount', 'title'] as SortField[]).map(f => (
               <button
                 key={f}
                 onClick={() => toggleSort(f)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap",
                   sortField === f 
                     ? "bg-[var(--accent)] text-white shadow-sm" 
                     : "text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
@@ -225,7 +234,7 @@ export const TransactionsPage = () => {
       </div>
 
       {loading ? (
-        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)]">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
           {[1, 2, 3, 4, 5].map(i => <TransactionSkeleton key={i} />)}
         </div>
       ) : (
