@@ -53,9 +53,16 @@ export const CATEGORY_ICONS: Record<ExpenseCategory, string> = {
   'Other':            '📦',
 };
 
+export const ESSENTIAL_CATEGORIES: ExpenseCategory[] = [
+  'Housing', 'Utilities', 'Healthcare', 'Education', 'Food & Dining', 'Transportation'
+];
+
+export const DISCRETIONARY_CATEGORIES: ExpenseCategory[] = [
+  'Shopping', 'Entertainment', 'Travel', 'Other'
+];
+
 export const ALL_CATEGORIES: ExpenseCategory[] = [
-  'Food & Dining', 'Transportation', 'Shopping', 'Entertainment',
-  'Healthcare', 'Housing', 'Utilities', 'Education', 'Travel', 'Other',
+  ...ESSENTIAL_CATEGORIES, ...DISCRETIONARY_CATEGORIES
 ];
 
 export function getCategoryColor(category: string): string {

@@ -67,3 +67,12 @@ export interface Profile {
   monthly_income: number;
   updated_at?: string;
 }
+export interface Subscription {
+  id: string;
+  name: string;
+  amount: number;
+  billing_cycle: 'monthly' | 'yearly' | 'weekly';
+  category: string;
+  next_billing: string;
+  status: 'active' | 'cancelled' | 'paused';
+}

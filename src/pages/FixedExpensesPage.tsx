@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, CreditCard, Calendar, Repeat, ArrowRight, ChevronLeft, ChevronRight, AlertTriangle, List } from 'lucide-react';
+import { Plus, CreditCard, Calendar, Repeat, ArrowRight, ChevronLeft, ChevronRight, AlertTriangle, List, Lightbulb } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/lib/CurrencyContext';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -9,16 +9,9 @@ import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { cn, formatDate } from '@/lib/utils';
 import { SubscriptionForm, type SubscriptionInsert } from '@/components/subscriptions/SubscriptionForm';
+import { SubscriptionAudit } from '@/components/subscriptions/SubscriptionAudit';
 
-interface Subscription {
-  id: string;
-  name: string;
-  amount: number;
-  billing_cycle: 'monthly' | 'yearly' | 'weekly';
-  category: string;
-  next_billing: string;
-  status: 'active' | 'cancelled' | 'paused';
-}
+import type { Budget, Goal, Expense, ExpenseCategory, Subscription } from '@/types';
 
 export const FixedExpensesPage = () => {
   const { formatAmount } = useCurrency();
@@ -30,6 +23,15 @@ export const FixedExpensesPage = () => {
   const [viewFilter, setViewFilter] = useState<'monthly' | 'yearly'>('monthly');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+  const [monthlyIncome, setMonthlyIncome] = useState(0);
+
+  const fetchProfile = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from('profiles').select('monthly_income').eq('id', user.id).single();
+    if (data) setMonthlyIncome(Number(data.monthly_income));
+  }, []);
 
   const fetchSubscriptions = useCallback(async () => {
     setLoading(true);
@@ -41,7 +43,10 @@ export const FixedExpensesPage = () => {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchSubscriptions(); }, [fetchSubscriptions]);
+  useEffect(() => { 
+    fetchSubscriptions(); 
+    fetchProfile();
+  }, [fetchSubscriptions, fetchProfile]);
 
   const handleAdd = async (data: SubscriptionInsert) => {
     setSubmitting(true);
@@ -140,6 +145,16 @@ export const FixedExpensesPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Smart Savings Audit */}
+      {!loading && (
+        <SubscriptionAudit 
+          subscriptions={subscriptions} 
+          income={monthlyIncome} 
+          dismissedIds={dismissedIds}
+          onDismissRecommendation={(id) => setDismissedIds(prev => [...prev, id])}
+        />
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex flex-shrink-0 rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] p-1">
@@ -317,52 +332,104 @@ export const FixedExpensesPage = () => {
               </CardContent>
             </Card>
           ) : (
-            filteredSubs.map((sub, i) => (
-              <motion.div
-                key={sub.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ delay: i * 0.05 }}
-              >
-                <Card className="hover:border-[var(--accent)]/30 transition-all cursor-pointer group">
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-xl bg-[var(--bg-elevated)] flex items-center justify-center text-xl">
-                          {sub.category === 'Investment/SIP' ? '📈' : 
-                           sub.category === 'Family Support' ? '🏠' : 
-                           sub.category === 'Bill/Rent' ? '🧾' : 
-                           sub.name.charAt(0)}
-                        </div>
+            filteredSubs.map((sub, i) => {
+              const rec = subscriptions.length > 0 ? {
+                // Inline logic to find recommendation for this sub
+                // This is a bit duplicative but keeps logic encapsulated
+                ...(sub.name.toLowerCase().includes('netflix') && sub.amount > 199 ? { title: 'Optimize Plan', message: `Save ~${formatAmount(sub.amount - 199)}/mo with Standard plan.`, impact: 'Medium', actionLabel: 'Downgrade' } : 
+                   (sub.name.toLowerCase().includes('hair') || sub.name.toLowerCase().includes('salon')) && sub.amount > 500 ? { title: 'Lower Frequency', message: `Local stylists could save you ~${formatAmount(sub.amount * 0.5)}.`, impact: 'High', actionLabel: 'Adjust' } :
+                   (sub.category === 'Investment/SIP' || sub.name.toLowerCase().includes('sip')) && totalMonthly / monthlyIncome > 0.7 && sub.amount > monthlyIncome * 0.1 ? { title: 'Rebalance SIP', message: 'Tight buffer. Consider a 5% reduction.', impact: 'Critical', actionLabel: 'Edit SIP' } : null)
+              } : null;
 
-                        <div>
-                          <h3 className="font-bold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">{sub.name}</h3>
-                          <p className="text-xs text-[var(--text-muted)]">{sub.category} • {sub.billing_cycle}</p>
+              const isDismissed = dismissedIds.includes(sub.id);
+              const showRec = rec && rec.title && !isDismissed;
+
+              return (
+                <motion.div
+                  key={sub.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ delay: i * 0.05 }}
+                >
+                  <Card className={cn(
+                    "hover:border-[var(--accent)]/30 transition-all cursor-pointer group",
+                    showRec ? "border-[var(--warning)]/40 bg-[var(--warning-subtle)]/5" : ""
+                  )}>
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            "h-12 w-12 rounded-xl flex items-center justify-center text-xl",
+                            showRec ? "bg-[var(--warning)] text-white" : "bg-[var(--bg-elevated)]"
+                          )}>
+                            {sub.category === 'Investment/SIP' ? '📈' : 
+                             sub.category === 'Family Support' ? '🏠' : 
+                             sub.category === 'Bill/Rent' ? '🧾' : 
+                             sub.name.charAt(0)}
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">{sub.name}</h3>
+                              {showRec && (
+                                <Badge variant="warning" className="text-[7px] h-3.5 px-1 font-black">AI TIP</Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-[var(--text-muted)]">{sub.category} • {sub.billing_cycle}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-[var(--text-primary)]">{formatAmount(sub.amount)}</p>
+                          <Badge variant={sub.status === 'active' ? 'success' : 'muted'} className="mt-1">
+                            {sub.status}
+                          </Badge>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-[var(--text-primary)]">{formatAmount(sub.amount)}</p>
-                        <Badge variant={sub.status === 'active' ? 'success' : 'muted'} className="mt-1">
-                          {sub.status}
-                        </Badge>
+
+                      {showRec && (
+                        <div className="mt-4 p-3 rounded-xl bg-white/5 border border-[var(--warning)]/20 relative overflow-hidden">
+                          <div className="flex items-start gap-3 relative z-10">
+                            <Lightbulb size={14} className="text-[var(--warning)] shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-[11px] font-bold text-[var(--text-primary)]">{rec.title}</p>
+                              <p className="text-[10px] text-[var(--text-muted)] mt-0.5 leading-relaxed">{rec.message}</p>
+                              <div className="flex items-center gap-3 mt-3">
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); setEditTarget(sub); setFormOpen(true); }}
+                                  className="text-[10px] font-bold text-[var(--accent)] hover:underline"
+                                >
+                                  {rec.actionLabel}
+                                </button>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); setDismissedIds(prev => [...prev, sub.id]); }}
+                                  className="text-[10px] font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                                >
+                                  Not Now
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="absolute right-0 top-0 w-24 h-24 bg-[var(--warning)]/5 blur-2xl rounded-full translate-x-8 -translate-y-8" />
+                        </div>
+                      )}
+
+                      <div className="mt-4 pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                          <Calendar size={12} />
+                          <span>Next bill: {formatDate(sub.next_billing)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm" className="h-8 text-xs text-[var(--danger)] hover:bg-[var(--danger-subtle)]" onClick={(e) => { e.stopPropagation(); handleDelete(sub.id); }}>Delete</Button>
+                          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setEditTarget(sub); setFormOpen(true); }}>Edit</Button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="mt-4 pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                        <Calendar size={12} />
-                        <span>Next bill: {formatDate(sub.next_billing)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" className="h-8 text-xs text-[var(--danger)] hover:bg-[var(--danger-subtle)]" onClick={(e) => { e.stopPropagation(); handleDelete(sub.id); }}>Delete</Button>
-                        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setEditTarget(sub); setFormOpen(true); }}>Edit</Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })
           )}
         </div>
       )}

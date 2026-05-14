@@ -7,15 +7,21 @@ interface BudgetCardProps {
   category: string;
   spent: number;
   limit: number;
+  adjustedLimit?: number;
   index?: number;
   onEdit?: () => void;
 }
 
-export const BudgetCard = ({ category, spent, limit, index = 0, onEdit }: BudgetCardProps) => {
+export const BudgetCard = ({ 
+  category, spent, limit, adjustedLimit, index = 0, onEdit 
+}: BudgetCardProps) => {
   const { formatAmount } = useCurrency();
-  const percentage = Math.min((spent / limit) * 100, 100);
-  const isOver = spent > limit;
-  const isWarning = spent > limit * 0.8 && spent <= limit;
+  const effectiveLimit = adjustedLimit !== undefined ? adjustedLimit : limit;
+  const isRealigned = adjustedLimit !== undefined && adjustedLimit < limit;
+  
+  const percentage = Math.min((spent / effectiveLimit) * 100, 100);
+  const isOver = spent > effectiveLimit;
+  const isWarning = spent > effectiveLimit * 0.8 && spent <= effectiveLimit;
 
   const getStatusColor = () => {
     if (isOver) return 'var(--danger)';
@@ -80,10 +86,20 @@ export const BudgetCard = ({ category, spent, limit, index = 0, onEdit }: Budget
             <span className="text-[10px] text-[var(--text-muted)] font-medium">Spent so far</span>
           </div>
           <div className="text-right">
-            <span className="text-sm font-bold text-[var(--text-secondary)]">
-              {formatAmount(limit)}
+            <span className={cn(
+              "text-sm font-bold",
+              isRealigned ? "text-[var(--warning)]" : "text-[var(--text-secondary)]"
+            )}>
+              {formatAmount(effectiveLimit)}
             </span>
-            <p className="text-[10px] text-[var(--text-muted)] font-medium">Budget limit</p>
+            {isRealigned && (
+              <p className="text-[8px] text-[var(--text-muted)] line-through">
+                {formatAmount(limit)}
+              </p>
+            )}
+            <p className="text-[10px] text-[var(--text-muted)] font-medium">
+              {isRealigned ? 'Smart Limit' : 'Budget limit'}
+            </p>
           </div>
         </div>
 
@@ -104,7 +120,7 @@ export const BudgetCard = ({ category, spent, limit, index = 0, onEdit }: Budget
             </span>
             {isOver && (
               <span className="text-[10px] font-bold text-[var(--danger)] animate-pulse">
-                Exceeded by {formatAmount(spent - limit)}
+                Exceeded by {formatAmount(spent - effectiveLimit)}
               </span>
             )}
             {isWarning && !isOver && (

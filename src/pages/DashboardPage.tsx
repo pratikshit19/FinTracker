@@ -20,7 +20,7 @@ import { GoalCard } from '@/components/dashboard/GoalCard';
 import { ChevronRight, ArrowRight, Activity } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FinancialHealthScore } from '@/components/dashboard/FinancialHealthScore';
-import { PredictiveBillCalendar } from '@/components/dashboard/PredictiveBillCalendar';
+import { SmartAllocationAdvisor } from '@/components/dashboard/SmartAllocationAdvisor';
 import { MoneyFlowMap } from '@/components/dashboard/MoneyFlowMap';
 import { Hash, Tag, CreditCard, Sparkles, AlertCircle, TrendingDown } from 'lucide-react';
 import { FinancialAdvisor } from '@/components/dashboard/FinancialAdvisor';
@@ -221,18 +221,20 @@ export const DashboardPage = () => {
             />
           </div>
 
-          {/* Bill Calendar (Top Right) */}
-          <div className="md:col-span-4 md:row-span-2 self-start">
-            <PredictiveBillCalendar
-              bills={subscriptions.map(s => ({
-                id: s.id,
-                name: s.name,
-                amount: s.amount,
-                date: s.next_billing,
-                isHighImpact: s.amount > 1000,
-                billing_cycle: s.billing_cycle
-              }))}
-              onPayBill={handlePayBill}
+          {/* Smart Allocation Advisor (Top Right) */}
+          <div className="md:col-span-4 md:row-span-2 self-start h-full">
+            <SmartAllocationAdvisor
+              income={monthlyIncome}
+              fixedExpenses={subscriptions.reduce((sum, sub) => {
+                if (sub.billing_cycle === 'monthly') return sum + sub.amount;
+                if (sub.billing_cycle === 'yearly') return sum + sub.amount / 12;
+                if (sub.billing_cycle === 'weekly') return sum + sub.amount * 4.33;
+                return sum;
+              }, 0)}
+              totalSpent={summary.totalSpent}
+              budgets={budgets}
+              goals={goals}
+              categorySpent={summary.categoryBreakdown}
             />
           </div>
 
