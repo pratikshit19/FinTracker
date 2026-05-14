@@ -22,7 +22,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FinancialHealthScore } from '@/components/dashboard/FinancialHealthScore';
 import { PredictiveBillCalendar } from '@/components/dashboard/PredictiveBillCalendar';
 import { MoneyFlowMap } from '@/components/dashboard/MoneyFlowMap';
-import { Hash, Tag, CreditCard, Sparkles, AlertCircle } from 'lucide-react';
+import { Hash, Tag, CreditCard, Sparkles, AlertCircle, TrendingDown } from 'lucide-react';
+import { FinancialAdvisor } from '@/components/dashboard/FinancialAdvisor';
 import type { Expense, ExpenseInsert, Budget, Goal } from '@/types';
 
 
@@ -93,6 +94,34 @@ export const DashboardPage = () => {
     setExpenses(prev => prev.filter(e => e.id !== id));
   };
 
+  const handlePayBill = async (bill: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    setLoading(true);
+    
+    // 1. Add as expense
+    await supabase.from('expenses').insert({
+      user_id: user.id,
+      title: `Bill: ${bill.name}`,
+      amount: bill.amount,
+      category: 'Utilities', // Default category for bills
+      date: new Date().toISOString().split('T')[0]
+    });
+
+    // 2. Update next billing date
+    const nextDate = new Date(bill.next_billing || bill.date);
+    if (bill.billing_cycle === 'weekly') nextDate.setDate(nextDate.getDate() + 7);
+    else if (bill.billing_cycle === 'yearly') nextDate.setFullYear(nextDate.getFullYear() + 1);
+    else nextDate.setMonth(nextDate.getMonth() + 1);
+
+    await supabase.from('subscriptions').update({
+      next_billing: nextDate.toISOString().split('T')[0]
+    }).eq('id', bill.id);
+
+    await fetchData();
+  };
+
   const monthName = now.toLocaleString('default', { month: 'long' });
 
   return (
@@ -119,6 +148,31 @@ export const DashboardPage = () => {
         <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent)]/10 blur-[100px] rounded-full -mr-32 -mt-32" />
       </motion.div>
 
+      {/* Financial Advisor Row */}
+      {!loading && monthlyIncome > 0 && (
+        <FinancialAdvisor
+          income={monthlyIncome}
+          fixedExpenses={subscriptions.reduce((sum, sub) => {
+            if (sub.billing_cycle === 'monthly') return sum + sub.amount;
+            if (sub.billing_cycle === 'yearly') return sum + sub.amount / 12;
+            if (sub.billing_cycle === 'weekly') return sum + sub.amount * 4.33;
+            return sum;
+          }, 0)}
+          totalSpent={summary.totalSpent}
+          budgets={budgets}
+          goals={goals}
+          upcomingBills={subscriptions.filter(s => {
+            if (!s.next_billing) return false;
+            const nextDate = new Date(s.next_billing);
+            const now = new Date();
+            // Show if it's in the current month or overdue
+            return (nextDate.getMonth() === now.getMonth() && nextDate.getFullYear() === now.getFullYear()) || nextDate < now;
+          })}
+          categorySpent={summary.categoryBreakdown}
+          onPayBill={handlePayBill}
+        />
+      )}
+
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -133,7 +187,7 @@ export const DashboardPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
 
           {/* Main Stats Area (Top Left) */}
-          <div className="md:col-span-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="md:col-span-8 grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
 
             <StatCard
               title="Monthly Spent"
@@ -168,15 +222,17 @@ export const DashboardPage = () => {
           </div>
 
           {/* Bill Calendar (Top Right) */}
-          <div className="md:col-span-4 md:row-span-2">
+          <div className="md:col-span-4 md:row-span-2 self-start">
             <PredictiveBillCalendar
               bills={subscriptions.map(s => ({
                 id: s.id,
                 name: s.name,
                 amount: s.amount,
                 date: s.next_billing,
-                isHighImpact: s.amount > 1000
+                isHighImpact: s.amount > 1000,
+                billing_cycle: s.billing_cycle
               }))}
+              onPayBill={handlePayBill}
             />
           </div>
 
@@ -214,6 +270,7 @@ export const DashboardPage = () => {
               subscriptions={subscriptions.reduce((s, sub) => s + sub.amount, 0)}
               budgets={budgets.reduce((s, b) => s + b.monthly_limit, 0)}
               savings={goals.reduce((s, g) => s + (g.current_amount || 0), 0) / 12}
+              actualSpent={summary.totalSpent}
             />
           </div>
 

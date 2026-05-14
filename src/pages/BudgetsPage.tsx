@@ -22,6 +22,7 @@ import {
 import { BudgetCard } from '@/components/dashboard/BudgetCard';
 import { GoalCard } from '@/components/dashboard/GoalCard';
 import { ALL_CATEGORIES, buildMonthSummary, cn, getAvailableCategories } from '@/lib/utils';
+import { FinancialAdvisor } from '@/components/dashboard/FinancialAdvisor';
 
 import type { Budget, Goal, Expense, ExpenseCategory } from '@/types';
 
@@ -30,9 +31,12 @@ type TabType = 'budgets' | 'goals';
 type BillingCycle = 'weekly' | 'monthly' | 'yearly';
 
 type Subscription = {
+  id: string;
+  name: string;
   amount: number;
   billing_cycle: BillingCycle;
   status: 'active' | 'cancelled' | 'paused';
+  next_billing: string;
 };
 
 export const BudgetsPage = () => {
@@ -134,6 +138,34 @@ export const BudgetsPage = () => {
     }
   };
 
+  const handlePayBill = async (bill: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    setLoading(true);
+    
+    // 1. Add as expense
+    await supabase.from('expenses').insert({
+      user_id: user.id,
+      title: `Bill: ${bill.name}`,
+      amount: bill.amount,
+      category: 'Utilities',
+      date: new Date().toISOString().split('T')[0]
+    });
+
+    // 2. Update next billing date
+    const nextDate = new Date(bill.next_billing || bill.date);
+    if (bill.billing_cycle === 'weekly') nextDate.setDate(nextDate.getDate() + 7);
+    else if (bill.billing_cycle === 'yearly') nextDate.setFullYear(nextDate.getFullYear() + 1);
+    else nextDate.setMonth(nextDate.getMonth() + 1);
+
+    await supabase.from('subscriptions').update({
+      next_billing: nextDate.toISOString().split('T')[0]
+    }).eq('id', bill.id);
+
+    await fetchData();
+  };
+
   const handleCreateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!goalName || !goalTarget) return;
@@ -204,7 +236,7 @@ export const BudgetsPage = () => {
     if (sub.billing_cycle === 'weekly') return sum + sub.amount * 4.33;
     return sum;
   }, 0);
-  const personalBudgetBuffer = monthlyIncome - fixedExpenses;
+  const personalBudgetBuffer = monthlyIncome - fixedExpenses - summary.totalSpent;
   const allocatedBudget = budgets.reduce((s, b) => s + b.monthly_limit, 0);
   const savingsBuffer = personalBudgetBuffer - allocatedBudget;
   const budgetUsageRatio = personalBudgetBuffer > 0 ? allocatedBudget / personalBudgetBuffer : 0;
@@ -212,6 +244,13 @@ export const BudgetsPage = () => {
   const previewAllocatedBudget = budgets.filter(b => b.id !== editingBudgetId).reduce((s, b) => s + b.monthly_limit, 0) + parseFloat(budgetLimit || '0');
   const previewRemainingBudget = personalBudgetBuffer - previewAllocatedBudget;
   const previewUsageRatio = personalBudgetBuffer > 0 ? previewAllocatedBudget / personalBudgetBuffer : 0;
+
+  const upcomingBills = subscriptions.filter(s => {
+    if (!s.next_billing) return false;
+    const nextDate = new Date(s.next_billing);
+    const now = new Date();
+    return (nextDate.getMonth() === now.getMonth() && nextDate.getFullYear() === now.getFullYear()) || nextDate < now;
+  });
 
   return (
     <div className="flex flex-col gap-6 pb-12">
@@ -289,13 +328,13 @@ export const BudgetsPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="bg-gradient-to-br from-[var(--accent)] to-[var(--accent-hover)] text-white border-none overflow-hidden relative">
                     <CardContent className="pt-6 relative z-10">
-                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Personal Budget Buffer</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Remaining Budget Buffer</p>
                       <div className="text-3xl font-bold">
                         {formatAmount(personalBudgetBuffer)}
                       </div>
                       <div className="flex items-center gap-2 mt-4 text-sm opacity-90">
                         <DollarSign size={14} />
-                        After fixed expenses and subscriptions
+                        After fixed expenses, subs, and spending
                       </div>
                     </CardContent>
                     <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full translate-x-12 -translate-y-12 blur-3xl" />
@@ -336,26 +375,17 @@ export const BudgetsPage = () => {
                   </Card>
                 </div>
 
-                {/* Smart Tip Card */}
-                {monthlyIncome > 0 && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--accent)]/10 flex items-start gap-4"
-                  >
-                    <div className="h-10 w-10 shrink-0 rounded-full bg-[var(--accent-subtle)] flex items-center justify-center text-[var(--accent)]">
-                      <AlertCircle size={20} />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-[var(--text-primary)] mb-1">Smart Budgeting Tip</h4>
-                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                        {budgetUsageRatio > 0.7 
-                          ? `Warning: You've allocated ${(budgetUsageRatio * 100).toFixed(0)}% of your personal budget buffer to categories. Keep more room for actual savings.`
-                          : `Nice work! You have ${((1 - budgetUsageRatio) * 100).toFixed(0)}% of your personal buffer still available to save.`}
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
+                {/* Financial Advisor Insights */}
+                <FinancialAdvisor
+                  income={monthlyIncome}
+                  fixedExpenses={fixedExpenses}
+                  totalSpent={summary.totalSpent}
+                  budgets={budgets}
+                  goals={goals}
+                  upcomingBills={upcomingBills}
+                  categorySpent={summary.categoryBreakdown}
+                  onPayBill={handlePayBill}
+                />
 
                 {/* Budget Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

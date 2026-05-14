@@ -31,7 +31,7 @@ export const StatCard = ({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: index * 0.05 }}
       whileHover={{ y: -4, scale: 1.02 }}
-      className="h-full"
+      className="h-fit"
     >
       <Card className="h-full border-[var(--border)] bg-[var(--bg-surface)] hover:border-[var(--accent)]/40 hover:bg-[var(--bg-hover)]/50 transition-all cursor-pointer overflow-hidden group relative">
         {/* Decorative background glow */}
@@ -40,9 +40,9 @@ export const StatCard = ({
           style={{ background: color }}
         />
         
-        <CardContent className="p-4 flex flex-col h-full justify-between">
+        <CardContent className="p-5 flex flex-col gap-4">
           <div className="flex justify-between items-start">
-            <div className="p-2 rounded-xl bg-[var(--bg-elevated)] text-[var(--text-primary)]" style={{ color }}>
+            <div className="p-2.5 rounded-xl bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-sm" style={{ color }}>
               {icon}
             </div>
             {!isNeutral && (
@@ -52,11 +52,11 @@ export const StatCard = ({
             )}
           </div>
           
-          <div className="mt-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1 truncate">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1.5 truncate">
               {title}
             </p>
-            <p className="text-xl font-bold text-[var(--text-primary)] tracking-tight">
+            <p className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">
               {isCurrency ? formatAmount(value) : value.toLocaleString()}
             </p>
           </div>

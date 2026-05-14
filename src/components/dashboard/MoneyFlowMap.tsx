@@ -73,16 +73,18 @@ interface MoneyFlowMapProps {
   subscriptions: number;
   budgets: number;
   savings: number;
+  actualSpent?: number;
 }
 
 export const MoneyFlowMap = ({ 
   salary = 40000, 
   subscriptions = 0, 
   budgets = 0, 
-  savings = 0 
+  savings = 0,
+  actualSpent = 0
 }: MoneyFlowMapProps) => {
   const fixedCosts = subscriptions;
-  const personalBudgetBuffer = Math.max(0, salary - fixedCosts);
+  const personalBudgetBuffer = Math.max(0, salary - fixedCosts - actualSpent);
   const savingsBuffer = Math.max(0, personalBudgetBuffer - budgets);
   const leftover = Math.max(0, savingsBuffer - savings);
 
@@ -102,7 +104,7 @@ export const MoneyFlowMap = ({
     {
       id: 'buffer',
       type: 'flowNode',
-      data: { label: 'Variable', amount: personalBudgetBuffer, icon: Wallet, targetPath: '/fixed-expenses' },
+      data: { label: 'Available Buffer', amount: personalBudgetBuffer, icon: Wallet, targetPath: '/fixed-expenses' },
       position: { x: 390, y: 140 },
     },
     {
