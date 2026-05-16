@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
-import { Menu, LayoutDashboard, ArrowLeftRight, Sparkles, Settings, CreditCard, User } from 'lucide-react';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Menu, LayoutDashboard, ArrowLeftRight, Sparkles, Settings, CreditCard, User, Plus } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -16,6 +16,7 @@ const BOTTOM_NAV = [
 export const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profile, setProfile] = useState<{ username: string; avatar_url: string | null } | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -107,6 +108,16 @@ export const AppLayout = () => {
           </NavLink>
         ))}
       </nav>
+
+      {/* ── Global Mobile FAB for Quick Add ─────────────────────────────── */}
+      <button
+        onClick={() => navigate('/dashboard?action=quick-add')}
+        className="lg:hidden fixed bottom-24 right-5 z-40 h-14 w-14 rounded-full bg-[var(--accent)] text-white shadow-xl shadow-[var(--accent)]/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+        aria-label="Quick Add Expense"
+      >
+        <Plus size={24} strokeWidth={2.5} />
+      </button>
+
     </div>
   );
 };

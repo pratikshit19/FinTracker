@@ -76,3 +76,12 @@ export interface Subscription {
   next_billing: string;
   status: 'active' | 'cancelled' | 'paused';
 }
+
+export interface WishlistItem {
+  id: string;
+  user_id: string;
+  name: string;
+  amount: number;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+}

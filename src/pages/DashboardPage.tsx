@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import {
   TrendingUp, Plus, Hash, Tag, CreditCard, Activity, Wallet, ShieldCheck, ArrowRight
 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/lib/CurrencyContext';
 import { buildMonthSummary, cn } from '@/lib/utils';
@@ -32,6 +33,17 @@ export const DashboardPage = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Expense | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'quick-add') {
+      setFormOpen(true);
+      setSearchParams(params => {
+        params.delete('action');
+        return params;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const now = new Date();
   const currentYear = now.getFullYear();

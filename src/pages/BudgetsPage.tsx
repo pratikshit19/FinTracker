@@ -20,13 +20,14 @@ import {
 } from '@/components/ui/Select';
 import { BudgetCard } from '@/components/dashboard/BudgetCard';
 import { GoalCard } from '@/components/dashboard/GoalCard';
+import { WishlistCard } from '@/components/dashboard/WishlistCard';
 import {
   buildMonthSummary, cn, getAvailableCategories
 } from '@/lib/utils';
 
-import type { Budget, Goal, Expense, ExpenseCategory } from '@/types';
+import type { Budget, Goal, Expense, ExpenseCategory, WishlistItem } from '@/types';
 
-type TabType = 'budgets' | 'goals';
+type TabType = 'budgets' | 'goals' | 'wishlist';
 
 type BillingCycle = 'weekly' | 'monthly' | 'yearly';
 
@@ -45,6 +46,7 @@ export const BudgetsPage = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   
   // Core Financial Profile
   const [monthlyIncome, setMonthlyIncome] = useState(0);
@@ -57,6 +59,7 @@ export const BudgetsPage = () => {
   // Modal States
   const [budgetModal, setBudgetModal] = useState(false);
   const [goalModal, setGoalModal] = useState(false);
+  const [wishlistModal, setWishlistModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
@@ -69,6 +72,9 @@ export const BudgetsPage = () => {
   const [goalCurrent, setGoalCurrent] = useState('');
   const [goalContribution, setGoalContribution] = useState('');
   const [goalDeadline, setGoalDeadline] = useState('');
+  
+  const [wishlistName, setWishlistName] = useState('');
+  const [wishlistAmount, setWishlistAmount] = useState('');
 
   // Custom Category State for Budgets
   const [isCustomCategory, setIsCustomCategory] = useState(false);
@@ -79,12 +85,13 @@ export const BudgetsPage = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [budgetsRes, goalsRes, expensesRes, subscriptionsRes, profileRes] = await Promise.all([
+    const [budgetsRes, goalsRes, expensesRes, subscriptionsRes, profileRes, wishlistRes] = await Promise.all([
       supabase.from('budgets').select('*').eq('user_id', user.id),
       supabase.from('goals').select('*').eq('user_id', user.id),
       supabase.from('expenses').select('*').eq('user_id', user.id),
       supabase.from('subscriptions').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('profiles').select('monthly_income, savings_target, min_leftover').eq('id', user.id).single(),
+      supabase.from('wishlist').select('*').eq('user_id', user.id).eq('status', 'pending'),
     ]);
 
     if (budgetsRes.data) setBudgets(budgetsRes.data);
@@ -94,6 +101,7 @@ export const BudgetsPage = () => {
     }
     if (expensesRes.data) setExpenses(expensesRes.data);
     if (subscriptionsRes.data) setSubscriptions(subscriptionsRes.data as Subscription[]);
+    if (wishlistRes.data) setWishlist(wishlistRes.data as WishlistItem[]);
     
     if (profileRes.data) {
       setMonthlyIncome(profileRes.data.monthly_income || 0);
@@ -211,6 +219,54 @@ export const BudgetsPage = () => {
     await fetchData();
   };
 
+  const handleCreateWishlistItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!wishlistName || !wishlistAmount) return;
+    setSubmitting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase.from('wishlist').insert({
+        user_id: user.id,
+        name: wishlistName,
+        amount: parseFloat(wishlistAmount),
+      });
+      if (!error) {
+        await fetchData();
+        setWishlistModal(false);
+        setWishlistName('');
+        setWishlistAmount('');
+      } else {
+        console.error('Wishlist error:', error);
+        alert(`Error: ${error.message}. Did you run the SQL command to create the wishlist table?`);
+      }
+    }
+    setSubmitting(false);
+  };
+
+  const handleApproveWishlist = async (item: WishlistItem) => {
+    setSubmitting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('expenses').insert({
+        user_id: user.id,
+        title: item.name,
+        amount: item.amount,
+        category: 'Shopping',
+        date: new Date().toISOString().split('T')[0]
+      });
+      await supabase.from('wishlist').update({ status: 'approved' }).eq('id', item.id);
+      await fetchData();
+    }
+    setSubmitting(false);
+  };
+
+  const handleRejectWishlist = async (id: string) => {
+    setSubmitting(true);
+    await supabase.from('wishlist').update({ status: 'rejected' }).eq('id', id);
+    await fetchData();
+    setSubmitting(false);
+  };
+
   // --- Core Financial Math ---
   const now = new Date();
   const summary = buildMonthSummary(expenses, now.getFullYear(), now.getMonth());
@@ -283,16 +339,34 @@ export const BudgetsPage = () => {
             <Target size={16} />
             Goals
           </button>
+          <button
+            onClick={() => setActiveTab('wishlist')}
+            className={cn(
+              "flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all duration-200",
+              activeTab === 'wishlist'
+                ? "bg-[var(--bg-surface)] text-[var(--accent)] shadow-sm"
+                : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            <Activity size={16} />
+            Wishlist
+          </button>
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          {activeTab === 'budgets' ? (
+          {activeTab === 'budgets' && (
             <Button className="w-full sm:w-auto gap-2" onClick={() => { setEditingBudgetId(null); setBudgetCategory(''); setBudgetLimit(''); setIsCustomCategory(false); setCustomCategoryName(''); setBudgetModal(true); }}>
               <Plus size={16} /> New Budget
             </Button>
-          ) : (
+          )}
+          {activeTab === 'goals' && (
             <Button className="w-full sm:w-auto gap-2" onClick={() => { setEditingGoalId(null); setGoalName(''); setGoalTarget(''); setGoalCurrent(''); setGoalContribution(''); setGoalDeadline(''); setGoalModal(true); }}>
               <Plus size={16} /> New Goal
+            </Button>
+          )}
+          {activeTab === 'wishlist' && (
+            <Button className="w-full sm:w-auto gap-2" onClick={() => { setWishlistName(''); setWishlistAmount(''); setWishlistModal(true); }}>
+              <Plus size={16} /> Add to Wishlist
             </Button>
           )}
         </div>
@@ -421,7 +495,7 @@ export const BudgetsPage = () => {
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : activeTab === 'goals' ? (
               <div className="max-w-4xl mx-auto space-y-8">
                 {/* Configuration Panel */}
                 <Card className="bg-[var(--bg-surface)] border-[var(--border)]">
@@ -493,7 +567,39 @@ export const BudgetsPage = () => {
                   </div>
                 </div>
               </div>
-            )}
+            ) : activeTab === 'wishlist' ? (
+              <div className="max-w-4xl mx-auto space-y-8 w-full">
+                <div className="flex flex-col gap-1 mb-4">
+                  <h2 className="text-2xl font-black text-[var(--text-primary)]">Impulse Wishlist</h2>
+                  <p className="text-sm text-[var(--text-muted)]">Add items you want to buy. A 48-hour cooling-off period applies to help control impulse spending.</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {wishlist.map((item) => (
+                    <WishlistCard 
+                      key={item.id} 
+                      item={item} 
+                      freeToSpend={freeToSpend} 
+                      onApprove={handleApproveWishlist}
+                      onReject={handleRejectWishlist}
+                    />
+                  ))}
+                  
+                  {wishlist.length === 0 && (
+                    <div className="col-span-full py-16 flex flex-col items-center justify-center border-2 border-dashed border-[var(--border)] rounded-2xl">
+                      <div className="h-16 w-16 rounded-full bg-[var(--bg-elevated)] flex items-center justify-center text-[var(--text-muted)] mb-4">
+                        <Activity size={32} />
+                      </div>
+                      <h3 className="text-lg font-bold text-[var(--text-primary)]">Wishlist is empty</h3>
+                      <p className="text-sm text-[var(--text-muted)] mt-1 max-w-sm text-center">See something you want? Add it here to start the 48-hour cooling-off period.</p>
+                      <Button className="mt-6" onClick={() => { setWishlistName(''); setWishlistAmount(''); setWishlistModal(true); }}>
+                        Add an Item
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </motion.div>
         </AnimatePresence>
       )}
@@ -659,6 +765,38 @@ export const BudgetsPage = () => {
                 </Button>
               )}
             </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Wishlist Modal */}
+      <Dialog open={wishlistModal} onOpenChange={setWishlistModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add to Wishlist</DialogTitle>
+            <DialogDescription>
+              Add an item you want to buy. A 48-hour cooling-off period will begin.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateWishlistItem} className="space-y-4 pt-4">
+            <Input
+              label="Item Name"
+              placeholder="e.g. New Watch"
+              value={wishlistName}
+              onChange={(e) => setWishlistName(e.target.value)}
+              required
+            />
+            <Input
+              label="Amount"
+              type="number"
+              placeholder="0.00"
+              value={wishlistAmount}
+              onChange={(e) => setWishlistAmount(e.target.value)}
+              required
+            />
+            <Button type="submit" className="w-full" loading={submitting}>
+              Start Cooling-Off Period
+            </Button>
           </form>
         </DialogContent>
       </Dialog>
