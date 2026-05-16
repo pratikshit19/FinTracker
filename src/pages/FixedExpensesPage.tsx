@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, CreditCard, Calendar, Repeat, ArrowRight, ChevronLeft, ChevronRight, AlertTriangle, List, Lightbulb } from 'lucide-react';
+import { Plus, CreditCard, Calendar, Repeat, ArrowRight, ChevronLeft, ChevronRight, AlertTriangle, List, Lightbulb, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/lib/CurrencyContext';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { cn, formatDate } from '@/lib/utils';
 import { SubscriptionForm, type SubscriptionInsert } from '@/components/subscriptions/SubscriptionForm';
-import { SubscriptionAudit } from '@/components/subscriptions/SubscriptionAudit';
 
 import type { Budget, Goal, Expense, ExpenseCategory, Subscription } from '@/types';
 
@@ -23,7 +22,6 @@ export const FixedExpensesPage = () => {
   const [viewFilter, setViewFilter] = useState<'monthly' | 'yearly'>('monthly');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [monthlyIncome, setMonthlyIncome] = useState(0);
 
   const fetchProfile = useCallback(async () => {
@@ -118,43 +116,45 @@ export const FixedExpensesPage = () => {
         </div>
       </motion.div>
 
-      {/* Summary Card */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="bg-[var(--accent)] text-white border-none">
-          <CardContent className="p-5 flex flex-col gap-1">
-            <p className="text-xs font-medium uppercase tracking-wider opacity-80">Total Monthly</p>
-            <p className="text-3xl font-bold">{formatAmount(totalMonthly)}</p>
-            <p className="text-xs opacity-70 mt-1">Across {activeSubscriptions.length} active services</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-dashed border-[var(--border)]">
-          <CardContent className="p-5 flex items-center justify-between h-full">
-            <div className="flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-[var(--info-subtle)] flex items-center justify-center text-[var(--info)]">
-                <Repeat size={20} />
+      {/* Fitted Bento Header */}
+      <div className="grid grid-cols-1 gap-6 items-stretch">
+        <Card className="bg-gradient-to-br from-[#1b48db] via-[#2563eb] to-[#1e40af] border-none shadow-xl shadow-blue-500/10 flex flex-col justify-center min-h-[140px] relative overflow-hidden group">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.05),transparent)] pointer-events-none" />
+          <div className="absolute -right-2 -top-2 opacity-[0.05] group-hover:opacity-10 transition-opacity">
+            <CreditCard size={100} />
+          </div>
+          <CardContent className="p-6 text-white flex flex-col h-full relative z-10">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="h-6 w-6 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md">
+                <Repeat size={14} className="text-white" />
               </div>
-              <div>
-                <p className="text-sm font-medium">Auto-Detection</p>
-                <p className="text-xs text-[var(--text-muted)]">Scan receipts to find subscriptions</p>
-              </div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">Monthly Burn Rate</p>
             </div>
-            <Button variant="outline" size="sm" className="gap-2">
-              Setup Scanner <ArrowRight size={14} />
-            </Button>
+            
+            <div className="mb-auto">
+              <h2 className="text-4xl font-black tracking-tighter">{formatAmount(totalMonthly)}</h2>
+            </div>
+            
+            <div className="pt-4 mt-4 border-t border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="space-y-0.5">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-white/50">Yearly Impact</p>
+                  <p className="text-base font-black tracking-tight">{formatAmount(totalMonthly * 12)}</p>
+                </div>
+                <div className="h-6 w-px bg-white/10 mx-2" />
+                <p className="text-[10px] opacity-60 font-medium italic">{activeSubscriptions.length} Active Payments</p>
+              </div>
+              <Button 
+                onClick={() => { setEditTarget(undefined); setFormOpen(true); }}
+                className="bg-white text-blue-600 hover:bg-blue-50 border-none text-[10px] font-black py-1.5 h-9 px-5 rounded-xl shadow-lg transition-all hover:-translate-y-0.5"
+              >
+                <Plus size={14} className="mr-1.5" /> New Payment
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Smart Savings Audit */}
-      {!loading && (
-        <SubscriptionAudit 
-          subscriptions={subscriptions} 
-          income={monthlyIncome} 
-          dismissedIds={dismissedIds}
-          onDismissRecommendation={(id) => setDismissedIds(prev => [...prev, id])}
-        />
-      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex flex-shrink-0 rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] p-1">
@@ -312,6 +312,8 @@ export const FixedExpensesPage = () => {
               )}
             </div>
           </div>
+        
+
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -333,17 +335,6 @@ export const FixedExpensesPage = () => {
             </Card>
           ) : (
             filteredSubs.map((sub, i) => {
-              const rec = subscriptions.length > 0 ? {
-                // Inline logic to find recommendation for this sub
-                // This is a bit duplicative but keeps logic encapsulated
-                ...(sub.name.toLowerCase().includes('netflix') && sub.amount > 199 ? { title: 'Optimize Plan', message: `Save ~${formatAmount(sub.amount - 199)}/mo with Standard plan.`, impact: 'Medium', actionLabel: 'Downgrade' } : 
-                   (sub.name.toLowerCase().includes('hair') || sub.name.toLowerCase().includes('salon')) && sub.amount > 500 ? { title: 'Lower Frequency', message: `Local stylists could save you ~${formatAmount(sub.amount * 0.5)}.`, impact: 'High', actionLabel: 'Adjust' } :
-                   (sub.category === 'Investment/SIP' || sub.name.toLowerCase().includes('sip')) && totalMonthly / monthlyIncome > 0.7 && sub.amount > monthlyIncome * 0.1 ? { title: 'Rebalance SIP', message: 'Tight buffer. Consider a 5% reduction.', impact: 'Critical', actionLabel: 'Edit SIP' } : null)
-              } : null;
-
-              const isDismissed = dismissedIds.includes(sub.id);
-              const showRec = rec && rec.title && !isDismissed;
-
               return (
                 <motion.div
                   key={sub.id}
@@ -353,17 +344,11 @@ export const FixedExpensesPage = () => {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ delay: i * 0.05 }}
                 >
-                  <Card className={cn(
-                    "hover:border-[var(--accent)]/30 transition-all cursor-pointer group",
-                    showRec ? "border-[var(--warning)]/40 bg-[var(--warning-subtle)]/5" : ""
-                  )}>
+                  <Card className="hover:border-[var(--accent)]/30 transition-all cursor-pointer group relative overflow-hidden bg-[var(--bg-surface)] border-[var(--border)]">
                     <CardContent className="p-5">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-4">
-                          <div className={cn(
-                            "h-12 w-12 rounded-xl flex items-center justify-center text-xl",
-                            showRec ? "bg-[var(--warning)] text-white" : "bg-[var(--bg-elevated)]"
-                          )}>
+                          <div className="h-12 w-12 rounded-xl bg-[var(--bg-elevated)] flex items-center justify-center text-xl border border-white/5 shadow-inner">
                             {sub.category === 'Investment/SIP' ? '📈' : 
                              sub.category === 'Family Support' ? '🏠' : 
                              sub.category === 'Bill/Rent' ? '🧾' : 
@@ -372,57 +357,27 @@ export const FixedExpensesPage = () => {
 
                           <div>
                             <div className="flex items-center gap-2">
-                              <h3 className="font-bold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">{sub.name}</h3>
-                              {showRec && (
-                                <Badge variant="warning" className="text-[7px] h-3.5 px-1 font-black">AI TIP</Badge>
-                              )}
+                              <h3 className="font-bold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors tracking-tight">{sub.name}</h3>
                             </div>
-                            <p className="text-xs text-[var(--text-muted)]">{sub.category} • {sub.billing_cycle}</p>
+                            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{sub.category} • {sub.billing_cycle}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-[var(--text-primary)]">{formatAmount(sub.amount)}</p>
-                          <Badge variant={sub.status === 'active' ? 'success' : 'muted'} className="mt-1">
+                          <p className="text-lg font-black text-[var(--text-primary)] tracking-tighter">{formatAmount(sub.amount)}</p>
+                          <Badge variant={sub.status === 'active' ? 'success' : 'muted'} className="mt-1 text-[8px] font-black tracking-widest uppercase">
                             {sub.status}
                           </Badge>
                         </div>
                       </div>
 
-                      {showRec && (
-                        <div className="mt-4 p-3 rounded-xl bg-white/5 border border-[var(--warning)]/20 relative overflow-hidden">
-                          <div className="flex items-start gap-3 relative z-10">
-                            <Lightbulb size={14} className="text-[var(--warning)] shrink-0 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="text-[11px] font-bold text-[var(--text-primary)]">{rec.title}</p>
-                              <p className="text-[10px] text-[var(--text-muted)] mt-0.5 leading-relaxed">{rec.message}</p>
-                              <div className="flex items-center gap-3 mt-3">
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); setEditTarget(sub); setFormOpen(true); }}
-                                  className="text-[10px] font-bold text-[var(--accent)] hover:underline"
-                                >
-                                  {rec.actionLabel}
-                                </button>
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); setDismissedIds(prev => [...prev, sub.id]); }}
-                                  className="text-[10px] font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                                >
-                                  Not Now
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="absolute right-0 top-0 w-24 h-24 bg-[var(--warning)]/5 blur-2xl rounded-full translate-x-8 -translate-y-8" />
-                        </div>
-                      )}
-
-                      <div className="mt-4 pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                          <Calendar size={12} />
+                      <div className="mt-4 pt-4 border-t border-white/[0.03] flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-[10px] text-[var(--text-muted)] font-medium">
+                          <Calendar size={12} className="opacity-50" />
                           <span>Next bill: {formatDate(sub.next_billing)}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm" className="h-8 text-xs text-[var(--danger)] hover:bg-[var(--danger-subtle)]" onClick={(e) => { e.stopPropagation(); handleDelete(sub.id); }}>Delete</Button>
-                          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setEditTarget(sub); setFormOpen(true); }}>Edit</Button>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                          <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold text-[var(--danger)] hover:bg-[var(--danger-subtle)]" onClick={(e) => { e.stopPropagation(); handleDelete(sub.id); }}>Delete</Button>
+                          <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold" onClick={() => { setEditTarget(sub); setFormOpen(true); }}>Edit</Button>
                         </div>
                       </div>
                     </CardContent>

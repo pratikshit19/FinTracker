@@ -17,16 +17,20 @@ export const SettingsPage = () => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [monthlyIncome, setMonthlyIncome] = useState('');
+  const [savingsTarget, setSavingsTarget] = useState('5000');
+  const [minLeftover, setMinLeftover] = useState('2000');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [initialUsername, setInitialUsername] = useState('');
   const [initialIncome, setInitialIncome] = useState('');
+  const [initialSavingsTarget, setInitialSavingsTarget] = useState('5000');
+  const [initialMinLeftover, setInitialMinLeftover] = useState('2000');
   const [initialAvatar, setInitialAvatar] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [msg, setMsg] = useState('');
 
-  const hasChanges = username !== initialUsername || avatarUrl !== initialAvatar || monthlyIncome !== initialIncome;
+  const hasChanges = username !== initialUsername || avatarUrl !== initialAvatar || monthlyIncome !== initialIncome || savingsTarget !== initialSavingsTarget || minLeftover !== initialMinLeftover;
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -36,19 +40,22 @@ export const SettingsPage = () => {
         console.log('[Settings] Loading profile for user:', user.id);
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('username, avatar_url, monthly_income')
+          .select('username, avatar_url, monthly_income, savings_target, min_leftover')
           .eq('id', user.id)
           .single();
         
         if (error) {
           console.warn('[Settings] Profile not found or error:', error);
         } else if (profile) {
-          console.log('[Settings] Profile loaded:', profile);
           setUsername(profile.username || '');
           setMonthlyIncome(profile.monthly_income?.toString() || '0');
+          setSavingsTarget(profile.savings_target?.toString() || '5000');
+          setMinLeftover(profile.min_leftover?.toString() || '2000');
           setAvatarUrl(profile.avatar_url);
           setInitialUsername(profile.username || '');
           setInitialIncome(profile.monthly_income?.toString() || '0');
+          setInitialSavingsTarget(profile.savings_target?.toString() || '5000');
+          setInitialMinLeftover(profile.min_leftover?.toString() || '2000');
           setInitialAvatar(profile.avatar_url);
         }
       }
@@ -70,6 +77,8 @@ export const SettingsPage = () => {
           username, 
           avatar_url: avatarUrl,
           monthly_income: parseFloat(monthlyIncome) || 0,
+          savings_target: parseFloat(savingsTarget) || 5000,
+          min_leftover: parseFloat(minLeftover) || 2000,
           updated_at: new Date().toISOString() 
         });
       
@@ -80,6 +89,8 @@ export const SettingsPage = () => {
         console.log('[Settings] Save successful');
         setInitialUsername(username);
         setInitialIncome(monthlyIncome);
+        setInitialSavingsTarget(savingsTarget);
+        setInitialMinLeftover(minLeftover);
         setInitialAvatar(avatarUrl);
         setMsg('Profile updated successfully!');
         setTimeout(() => setMsg(''), 3000);
@@ -206,15 +217,33 @@ export const SettingsPage = () => {
             <CardHeader><CardTitle>Financial Profile</CardTitle></CardHeader>
             <CardContent className="flex flex-col gap-4">
               <Input
-                label="Monthly Income"
+                label="Monthly Income (Salary)"
                 type="number"
-                placeholder="e.g. 40000"
+                placeholder="e.g. 33000"
                 value={monthlyIncome}
                 onChange={(e) => setMonthlyIncome(e.target.value)}
                 leftIcon={<span className="text-xs font-bold text-[var(--text-muted)]">{CURRENCIES.find(c => c.code === currency)?.symbol || '$'}</span>}
               />
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Monthly Savings Target"
+                  type="number"
+                  placeholder="e.g. 5000"
+                  value={savingsTarget}
+                  onChange={(e) => setSavingsTarget(e.target.value)}
+                  leftIcon={<span className="text-xs font-bold text-[var(--text-muted)]">{CURRENCIES.find(c => c.code === currency)?.symbol || '$'}</span>}
+                />
+                <Input
+                  label="Minimum Month-End Leftover"
+                  type="number"
+                  placeholder="e.g. 2000"
+                  value={minLeftover}
+                  onChange={(e) => setMinLeftover(e.target.value)}
+                  leftIcon={<span className="text-xs font-bold text-[var(--text-muted)]">{CURRENCIES.find(c => c.code === currency)?.symbol || '$'}</span>}
+                />
+              </div>
               <p className="text-xs text-[var(--text-muted)]">
-                Setting your income helps FinTrace provide smarter budgeting advice and calculate your true savings potential.
+                Your entire dashboard is calculated from these three numbers: <strong>Income – Savings – Leftover = Free to Spend</strong>.
               </p>
             </CardContent>
           </Card>

@@ -1,40 +1,33 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
-  DollarSign, ShoppingCart, TrendingUp, Calendar, Plus
+  TrendingUp, Plus, Hash, Tag, CreditCard, Activity, Wallet, ShieldCheck, ArrowRight
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/lib/CurrencyContext';
-import { buildMonthSummary } from '@/lib/utils';
+import { buildMonthSummary, cn } from '@/lib/utils';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { SpendingChart } from '@/components/dashboard/SpendingChart';
 import { CategoryBreakdown } from '@/components/dashboard/CategoryBreakdown';
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { Button } from '@/components/ui/Button';
-import { Spinner } from '@/components/ui/Spinner';
-import { Skeleton, CardSkeleton, TransactionSkeleton } from '@/components/ui/Skeleton';
-
-import { BudgetCard } from '@/components/dashboard/BudgetCard';
-import { GoalCard } from '@/components/dashboard/GoalCard';
-import { ChevronRight, ArrowRight, Activity } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import { FinancialHealthScore } from '@/components/dashboard/FinancialHealthScore';
-import { SmartAllocationAdvisor } from '@/components/dashboard/SmartAllocationAdvisor';
-import { MoneyFlowMap } from '@/components/dashboard/MoneyFlowMap';
-import { Hash, Tag, CreditCard, Sparkles, AlertCircle, TrendingDown } from 'lucide-react';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { FinancialAdvisor } from '@/components/dashboard/FinancialAdvisor';
 import type { Expense, ExpenseInsert, Budget, Goal } from '@/types';
 
-
 export const DashboardPage = () => {
   const { formatAmount } = useCurrency();
-  const navigate = useNavigate();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  
+  // Core Profile Data
   const [monthlyIncome, setMonthlyIncome] = useState(0);
+  const [savingsTarget, setSavingsTarget] = useState(5000);
+  const [minLeftover, setMinLeftover] = useState(2000);
+  
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Expense | undefined>();
@@ -54,14 +47,19 @@ export const DashboardPage = () => {
       supabase.from('budgets').select('*').eq('user_id', user.id),
       supabase.from('goals').select('*').eq('user_id', user.id),
       supabase.from('subscriptions').select('*').eq('user_id', user.id).eq('status', 'active'),
-      supabase.from('profiles').select('monthly_income').eq('id', user.id).single()
+      supabase.from('profiles').select('monthly_income, savings_target, min_leftover').eq('id', user.id).single()
     ]);
 
     if (expensesRes.data) setExpenses(expensesRes.data as Expense[]);
     if (budgetsRes.data) setBudgets(budgetsRes.data as Budget[]);
     if (goalsRes.data) setGoals(goalsRes.data as Goal[]);
     if (subsRes.data) setSubscriptions(subsRes.data);
-    if (profileRes.data) setMonthlyIncome(profileRes.data.monthly_income || 0);
+    
+    if (profileRes.data) {
+      setMonthlyIncome(profileRes.data.monthly_income || 0);
+      setSavingsTarget(profileRes.data.savings_target || 5000);
+      setMinLeftover(profileRes.data.min_leftover || 2000);
+    }
 
     setLoading(false);
   }, []);
@@ -100,16 +98,14 @@ export const DashboardPage = () => {
 
     setLoading(true);
     
-    // 1. Add as expense
     await supabase.from('expenses').insert({
       user_id: user.id,
       title: `Bill: ${bill.name}`,
       amount: bill.amount,
-      category: 'Utilities', // Default category for bills
+      category: 'Utilities',
       date: new Date().toISOString().split('T')[0]
     });
 
-    // 2. Update next billing date
     const nextDate = new Date(bill.next_billing || bill.date);
     if (bill.billing_cycle === 'weekly') nextDate.setDate(nextDate.getDate() + 7);
     else if (bill.billing_cycle === 'yearly') nextDate.setFullYear(nextDate.getFullYear() + 1);
@@ -122,10 +118,19 @@ export const DashboardPage = () => {
     await fetchData();
   };
 
-  const monthName = now.toLocaleString('default', { month: 'long' });
+  // Core Math
+  const fixedExpenses = subscriptions.reduce((sum, sub) => {
+    if (sub.billing_cycle === 'monthly') return sum + sub.amount;
+    if (sub.billing_cycle === 'yearly') return sum + sub.amount / 12;
+    if (sub.billing_cycle === 'weekly') return sum + sub.amount * 4.33;
+    return sum;
+  }, 0);
+
+  const disposableIncome = Math.max(0, monthlyIncome - fixedExpenses);
+  const freeToSpend = disposableIncome - savingsTarget - minLeftover;
 
   return (
-    <div className="flex flex-col gap-6 max-w-[1600px] mx-auto w-full">
+    <div className="flex flex-col gap-6 max-w-[1600px] mx-auto w-full pb-12">
       {/* Hero Welcome Row */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -136,7 +141,7 @@ export const DashboardPage = () => {
           <h1 className="text-3xl font-bold tracking-tight">Welcome back, Pratikshit!</h1>
           <p className="text-[var(--text-muted)] mt-1 flex items-center gap-2">
             <Activity size={14} className="text-[var(--success)]" />
-            Your financial health score is looking strong this month.
+            Your dashboard is ready. Keep up the good work.
           </p>
         </div>
         <div className="flex items-center gap-3 relative z-10">
@@ -144,7 +149,6 @@ export const DashboardPage = () => {
             <Plus size={18} className="mr-2" /> Add Expense
           </Button>
         </div>
-        {/* Decorative background glow */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent)]/10 blur-[100px] rounded-full -mr-32 -mt-32" />
       </motion.div>
 
@@ -152,20 +156,14 @@ export const DashboardPage = () => {
       {!loading && monthlyIncome > 0 && (
         <FinancialAdvisor
           income={monthlyIncome}
-          fixedExpenses={subscriptions.reduce((sum, sub) => {
-            if (sub.billing_cycle === 'monthly') return sum + sub.amount;
-            if (sub.billing_cycle === 'yearly') return sum + sub.amount / 12;
-            if (sub.billing_cycle === 'weekly') return sum + sub.amount * 4.33;
-            return sum;
-          }, 0)}
+          fixedExpenses={fixedExpenses}
           totalSpent={summary.totalSpent}
           budgets={budgets}
-          goals={goals}
+          goals={goals.filter(g => g.name !== 'Wealth Vault' && g.name !== 'Savings Config')}
           upcomingBills={subscriptions.filter(s => {
             if (!s.next_billing) return false;
             const nextDate = new Date(s.next_billing);
             const now = new Date();
-            // Show if it's in the current month or overdue
             return (nextDate.getMonth() === now.getMonth() && nextDate.getFullYear() === now.getFullYear()) || nextDate < now;
           })}
           categorySpent={summary.categoryBreakdown}
@@ -175,20 +173,69 @@ export const DashboardPage = () => {
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="md:col-span-12 h-24 rounded-2xl" />
+          <div className="md:col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}
           </div>
-          <Skeleton className="md:col-span-4 md:row-span-2 h-full min-h-[400px] rounded-3xl" />
-          <Skeleton className="md:col-span-4 h-64 rounded-3xl" />
+          <Skeleton className="md:col-span-8 h-64 rounded-3xl" />
           <Skeleton className="md:col-span-4 h-64 rounded-3xl" />
           <Skeleton className="md:col-span-12 h-[500px] rounded-3xl" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        <div className="flex flex-col gap-6">
 
-          {/* Main Stats Area (Top Left) */}
-          <div className="md:col-span-8 grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+          {/* This Month's Flow Banner */}
+          <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-[var(--accent)]/5 to-transparent pointer-events-none" />
+            
+            <div className="flex items-center gap-3 md:w-1/5 relative z-10">
+              <div className="h-10 w-10 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] flex items-center justify-center shrink-0">
+                <Wallet size={18} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Salary</p>
+                <p className="font-bold text-lg">{formatAmount(monthlyIncome)}</p>
+              </div>
+            </div>
 
+            <ArrowRight size={16} className="text-[var(--text-muted)] hidden md:block" />
+
+            <div className="flex items-center gap-3 md:w-1/5 relative z-10">
+              <div className="h-10 w-10 rounded-full bg-[var(--danger-subtle)] text-[var(--danger)] flex items-center justify-center shrink-0">
+                <Activity size={18} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Fixed Bills</p>
+                <p className="font-bold text-lg">{formatAmount(fixedExpenses)}</p>
+              </div>
+            </div>
+
+            <ArrowRight size={16} className="text-[var(--text-muted)] hidden md:block" />
+
+            <div className="flex items-center gap-3 md:w-1/5 relative z-10">
+              <div className="h-10 w-10 rounded-full bg-[var(--info-subtle)] text-[var(--info)] flex items-center justify-center shrink-0">
+                <ShieldCheck size={18} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Savings & Buffer</p>
+                <p className="font-bold text-lg">{formatAmount(savingsTarget + minLeftover)}</p>
+              </div>
+            </div>
+
+            <ArrowRight size={16} className="text-[var(--text-muted)] hidden md:block" />
+
+            <div className="flex items-center justify-end gap-3 md:w-1/4 relative z-10 bg-[var(--bg-elevated)] p-3 rounded-xl border border-[var(--border)]">
+              <div className="text-right">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Free to Spend</p>
+                <p className={cn("font-black text-xl", freeToSpend < 0 ? "text-[var(--danger)]" : "text-[var(--accent)]")}>
+                  {formatAmount(freeToSpend)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Stats Area */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
             <StatCard
               title="Monthly Spent"
               value={summary.totalSpent}
@@ -221,68 +268,23 @@ export const DashboardPage = () => {
             />
           </div>
 
-          {/* Smart Allocation Advisor (Top Right) */}
-          <div className="md:col-span-4 md:row-span-2 self-start h-full">
-            <SmartAllocationAdvisor
-              income={monthlyIncome}
-              fixedExpenses={subscriptions.reduce((sum, sub) => {
-                if (sub.billing_cycle === 'monthly') return sum + sub.amount;
-                if (sub.billing_cycle === 'yearly') return sum + sub.amount / 12;
-                if (sub.billing_cycle === 'weekly') return sum + sub.amount * 4.33;
-                return sum;
-              }, 0)}
-              totalSpent={summary.totalSpent}
-              budgets={budgets}
-              goals={goals}
-              categorySpent={summary.categoryBreakdown}
-            />
-          </div>
-
-          {/* Health Score (Middle Left) */}
-          <div className="md:col-span-4 h-full">
-            <FinancialHealthScore
-              score={Math.min(100, Math.max(20, (
-                (budgets.length > 0 ? (1 - (summary.totalSpent / (budgets.reduce((s, b) => s + b.monthly_limit, 0) || 1))) * 40 : 20) +
-                (goals.length > 0 ? (goals.reduce((s, g) => s + (g.current_amount / g.target_amount), 0) / goals.length) * 40 : 20) +
-                20
-              )))}
-              details={{
-                savingsRatio: goals.length > 0 ? 85 : 40,
-                budgetAdherence: budgets.length > 0 ? Math.min(100, (1 - (summary.totalSpent / (budgets.reduce((s, b) => s + b.monthly_limit, 0) || 1))) * 100) : 50,
-                goalProgress: goals.length > 0 ? (goals.reduce((s, g) => s + (g.current_amount / g.target_amount), 0) / goals.length) * 100 : 30
-              }}
-            />
-          </div>
-
-          {/* Spending Trend Chart (Middle Center) */}
-          <div className="md:col-span-4 h-full">
-            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-5 h-full">
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-5">
               <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-4 flex items-center gap-2">
                 <TrendingUp size={14} className="text-[var(--accent)]" />
                 Daily Spending Trend
               </h3>
-              <SpendingChart data={summary.dailySpend} height={180} />
+              <SpendingChart data={summary.dailySpend} height={250} />
+            </div>
+
+            <div className="lg:col-span-1 h-full">
+              <CategoryBreakdown breakdown={summary.categoryBreakdown} total={summary.totalSpent} />
             </div>
           </div>
 
-          {/* Money Flow Map (Full Width Large Tile) */}
-          <div className="md:col-span-12 lg:col-span-8">
-            <MoneyFlowMap
-              salary={monthlyIncome}
-              subscriptions={subscriptions.reduce((s, sub) => s + sub.amount, 0)}
-              budgets={budgets.reduce((s, b) => s + b.monthly_limit, 0)}
-              savings={goals.reduce((s, g) => s + (g.current_amount || 0), 0) / 12}
-              actualSpent={summary.totalSpent}
-            />
-          </div>
-
-          {/* Category Breakdown (Bottom Right Small) */}
-          <div className="md:col-span-12 lg:col-span-4">
-            <CategoryBreakdown breakdown={summary.categoryBreakdown} total={summary.totalSpent} />
-          </div>
-
-          {/* Recent Transactions (Full Width Bottom) */}
-          <div className="md:col-span-12">
+          {/* Recent Transactions */}
+          <div className="w-full">
             <RecentTransactions
               expenses={expenses}
               onDelete={handleDelete}
@@ -292,7 +294,6 @@ export const DashboardPage = () => {
         </div>
       )}
 
-      {/* Form Modal */}
       <TransactionForm
         open={formOpen}
         onOpenChange={open => { setFormOpen(open); if (!open) setEditTarget(undefined); }}
@@ -303,5 +304,3 @@ export const DashboardPage = () => {
     </div>
   );
 };
-
-
