@@ -9,7 +9,8 @@
     ],
     "module": "esnext",
     "types": [
-      "vite/client"
+      "vite/client",
+      "vite-plugin-pwa/client"
     ],
     "skipLibCheck": true,
     "moduleResolution": "bundler",

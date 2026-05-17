@@ -2,13 +2,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { NoSpendDay } from '@/components/dashboard/NoSpendDay';
 import { ReceiptModal } from '@/components/transactions/ReceiptModal';
 import { getCategoryColor, getCategoryIcon, formatDate } from '@/lib/utils';
 import { useState } from 'react';
 
-import type { Expense, ExpenseCategory } from '@/types';
+import type { Expense } from '@/types';
 import { useCurrency } from '@/lib/CurrencyContext';
 
 interface RecentTransactionsProps {
@@ -16,7 +15,7 @@ interface RecentTransactionsProps {
   onDelete: (id: string) => void;
   onEdit: (expense: Expense) => void;
   limit?: number;
-  title?: string;
+  title?: React.ReactNode;
 }
 
 export const RecentTransactions = ({

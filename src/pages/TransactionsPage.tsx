@@ -4,6 +4,7 @@ import { Plus, Search, Filter, ArrowDownUp, Download, Upload } from 'lucide-reac
 
 import { supabase } from '@/lib/supabase';
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
+import { DailyLogsList } from '@/components/dashboard/DailyLogsList';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -29,6 +30,7 @@ export const TransactionsPage = () => {
   const [formOpen, setFormOpen]     = useState(false);
   const [editTarget, setEditTarget] = useState<Expense | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  const [viewMode, setViewMode]     = useState<'list' | 'logs'>('list');
   const { formatAmount } = useCurrency();
 
   const fetchExpenses = useCallback(async () => {
@@ -233,20 +235,51 @@ export const TransactionsPage = () => {
         </div>
       </div>
 
-      {loading ? (
-        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
-          {[1, 2, 3, 4, 5].map(i => <TransactionSkeleton key={i} />)}
-        </div>
-      ) : (
-
-        <RecentTransactions
-          expenses={filtered}
-          onDelete={handleDelete}
-          onEdit={exp => { setEditTarget(exp); setFormOpen(true); }}
-          limit={filtered.length}
-          title="All Transactions"
-        />
-      )}
+      <div className="min-h-[400px]">
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map(i => <TransactionSkeleton key={i} />)}
+          </div>
+        ) : (
+          viewMode === 'list' ? (
+            <RecentTransactions
+              title={
+                <Select value={viewMode} onValueChange={(val: 'list' | 'logs') => setViewMode(val)}>
+                  <SelectTrigger className="w-auto min-w-[160px] h-auto p-0 bg-transparent border-none focus:ring-0 shadow-none hover:bg-transparent [&_span[data-radix-select-icon]]:ml-2 [&_svg]:w-5 [&_svg]:h-5 [&_svg]:text-[var(--text-primary)] text-[var(--text-primary)] font-bold text-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[var(--bg-surface)] border-[var(--border)] min-w-[200px]">
+                    <SelectItem value="list" className="uppercase font-bold tracking-wider text-xs py-2.5">All Transactions</SelectItem>
+                    <SelectItem value="logs" className="uppercase font-bold tracking-wider text-xs py-2.5">Daily Logs</SelectItem>
+                  </SelectContent>
+                </Select>
+              }
+              limit={1000}
+              expenses={filtered}
+              onDelete={handleDelete}
+              onEdit={(exp) => { setEditTarget(exp); setFormOpen(true); }}
+            />
+          ) : (
+            <DailyLogsList
+              title={
+                <Select value={viewMode} onValueChange={(val: 'list' | 'logs') => setViewMode(val)}>
+                  <SelectTrigger className="w-auto min-w-[160px] h-auto p-0 bg-transparent border-none focus:ring-0 shadow-none hover:bg-transparent [&_span[data-radix-select-icon]]:ml-2 [&_svg]:w-5 [&_svg]:h-5 [&_svg]:text-[var(--text-primary)] text-[var(--text-primary)] font-bold text-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[var(--bg-surface)] border-[var(--border)] min-w-[200px]">
+                    <SelectItem value="list" className="uppercase font-bold tracking-wider text-xs py-2.5">All Transactions</SelectItem>
+                    <SelectItem value="logs" className="uppercase font-bold tracking-wider text-xs py-2.5">Daily Logs</SelectItem>
+                  </SelectContent>
+                </Select>
+              }
+              limit={1000}
+              expenses={filtered}
+              onDelete={handleDelete}
+              onEdit={(exp) => { setEditTarget(exp); setFormOpen(true); }}
+            />
+          )
+        )}
+      </div>
 
       <TransactionForm
         open={formOpen}

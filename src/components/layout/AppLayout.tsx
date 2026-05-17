@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, LayoutDashboard, ArrowLeftRight, Sparkles, Settings, CreditCard, User, Plus } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { CommandPalette } from '@/components/CommandPalette';
 
 const BOTTOM_NAV = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Home'      },
@@ -75,6 +76,7 @@ export const AppLayout = () => {
         {/* Page content */}
         <div className="flex-1 px-5 py-6 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pb-24 lg:pb-8 overflow-x-hidden">
           <div className="max-w-6xl mx-auto">
+            <CommandPalette />
             <Outlet />
           </div>
         </div>
