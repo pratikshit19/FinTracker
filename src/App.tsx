@@ -15,6 +15,7 @@ import { BudgetsPage } from '@/pages/BudgetsPage';
 import { Spinner } from '@/components/ui/Spinner';
 import { SplashScreen } from '@/components/layout/SplashScreen';
 import { Onboarding } from '@/components/layout/Onboarding';
+import { UpdatePasswordPage } from '@/pages/UpdatePasswordPage';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -23,10 +24,32 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return localStorage.getItem('fintrace_onboarded') !== 'true';
   });
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const [authError, setAuthError] = useState<string>('');
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('fintrace_theme') || 'default';
+    if (savedTheme !== 'default') {
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }, []);
 
   useEffect(() => {
     // Get initial session
     const checkInitialSession = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const errorDescription = hashParams.get('error_description');
+
+      if (errorDescription) {
+        console.log('[Auth] Error from redirect:', errorDescription);
+        setAuthError(errorDescription.replace(/\+/g, ' '));
+        window.history.replaceState(null, '', window.location.pathname);
+        setLoading(false);
+        return;
+      }
+
       // Check if we have a fragment in the URL (typical for OAuth redirects)
       const hasAuthData = window.location.hash || window.location.search.includes('code=');
       
@@ -66,16 +89,24 @@ function App() {
       setSession(session);
       if (event === 'SIGNED_IN') setLoading(false);
       if (event === 'INITIAL_SESSION' && session) setLoading(false);
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true);
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  if (showOnboarding) {
+  if (showOnboarding && !isPasswordRecovery) {
     return <Onboarding onComplete={() => setShowOnboarding(false)} />;
   }
 
-  if (showSplash) {
+  if (isPasswordRecovery) {
+    return <UpdatePasswordPage onComplete={() => setIsPasswordRecovery(false)} />;
+  }
+
+  if (showSplash && !isPasswordRecovery) {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }
 
@@ -96,7 +127,7 @@ function App() {
         {/* Public */}
         <Route
           path="/"
-          element={session ? <Navigate to="/dashboard" replace /> : <AuthPage />}
+          element={session ? <Navigate to="/dashboard" replace /> : <AuthPage initialError={authError} />}
         />
 
         {/* Protected */}

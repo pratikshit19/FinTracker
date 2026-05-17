@@ -1,42 +1,66 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ArrowLeft, Check } from 'lucide-react';
+import { ChevronRight, ArrowLeft, Check, Sparkles, Wallet, PiggyBank, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { supabase } from '@/lib/supabase';
+import { useCurrency } from '@/lib/CurrencyContext';
 
-interface OnboardingStep {
-  title: string;
-  description: string;
-  image: string;
-  features?: string[];
-}
-
-const STEPS: OnboardingStep[] = [
+const WIZARD_STEPS = [
   {
-    title: "Smart Tracking",
-    description: "Automatically categorize your spending with AI-Powered Scanning. Just snap a photo of any receipt and let our system do the heavy lifting for you.",
-    image: "/onboarding_smart_tracking_1778411423492.png",
+    id: 'income',
+    title: "Let's start with your Income.",
+    description: "What is your fixed monthly salary after taxes? We'll use this as the baseline for your entire budget.",
+    icon: Wallet,
+    color: "var(--info)",
+    bg: "var(--info-subtle)"
   },
   {
-    title: "Manage Subscriptions",
-    description: "Keep track of all your recurring bills and get notified before they are due.",
-    image: "/onboarding_subscriptions_1778411437564.png",
-    features: ["Monthly billing cycles tracked", "24-hour advance alerts"]
+    id: 'savings',
+    title: "Pay yourself first.",
+    description: "How much of that income do you want to immediately lock away into savings or investments?",
+    icon: PiggyBank,
+    color: "var(--success)",
+    bg: "var(--success-subtle)"
   },
   {
-    title: "Deep insights into spending habits.",
-    description: "Visualize your progress and reach your savings goals faster with detailed reports.",
-    image: "/onboarding_insights_1778411455438.png"
+    id: 'leftover',
+    title: "Set your safety net.",
+    description: "What is the absolute minimum amount you want left in your checking account at the end of the month?",
+    icon: ShieldCheck,
+    color: "var(--warning)",
+    bg: "var(--warning-subtle)"
   }
 ];
 
 export const Onboarding = ({ onComplete }: { onComplete: () => void }) => {
+  const { getCurrencySymbol } = useCurrency();
+  const symbol = getCurrencySymbol();
   const [currentStep, setCurrentStep] = useState(0);
+  const [income, setIncome] = useState('');
+  const [savings, setSavings] = useState('5000');
+  const [leftover, setLeftover] = useState('2000');
+  const [loading, setLoading] = useState(false);
 
-  const next = () => {
-    if (currentStep < STEPS.length - 1) {
+  const next = async () => {
+    if (currentStep < WIZARD_STEPS.length - 1) {
       setCurrentStep(s => s + 1);
     } else {
+      setLoading(true);
+      // Save to Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('profiles').upsert({
+          id: user.id,
+          monthly_income: parseFloat(income) || 0,
+          savings_target: parseFloat(savings) || 0,
+          min_leftover: parseFloat(leftover) || 0,
+          updated_at: new Date().toISOString()
+        });
+      }
+      
       localStorage.setItem('fintrace_onboarded', 'true');
+      setLoading(false);
       onComplete();
     }
   };
@@ -45,17 +69,58 @@ export const Onboarding = ({ onComplete }: { onComplete: () => void }) => {
     if (currentStep > 0) setCurrentStep(s => s - 1);
   };
 
-  const step = STEPS[currentStep];
+  const step = WIZARD_STEPS[currentStep];
+  const StepIcon = step.icon;
+
+  const renderInput = () => {
+    if (step.id === 'income') {
+      return (
+        <Input 
+          type="number" autoFocus placeholder="e.g. 50000" 
+          value={income} onChange={e => setIncome(e.target.value)} 
+          leftIcon={<span className="text-xl font-bold">{symbol}</span>}
+          className="h-16 text-2xl font-bold px-4"
+        />
+      );
+    }
+    if (step.id === 'savings') {
+      return (
+        <Input 
+          type="number" autoFocus placeholder="e.g. 5000" 
+          value={savings} onChange={e => setSavings(e.target.value)} 
+          leftIcon={<span className="text-xl font-bold">{symbol}</span>}
+          className="h-16 text-2xl font-bold px-4"
+        />
+      );
+    }
+    if (step.id === 'leftover') {
+      return (
+        <Input 
+          type="number" autoFocus placeholder="e.g. 2000" 
+          value={leftover} onChange={e => setLeftover(e.target.value)} 
+          leftIcon={<span className="text-xl font-bold">{symbol}</span>}
+          className="h-16 text-2xl font-bold px-4"
+        />
+      );
+    }
+  };
+
+  const canProceed = () => {
+    if (step.id === 'income') return income.trim() !== '';
+    if (step.id === 'savings') return savings.trim() !== '';
+    if (step.id === 'leftover') return leftover.trim() !== '';
+    return false;
+  };
 
   return (
     <div className="fixed inset-0 z-[100] bg-[var(--bg-base)] flex flex-col overflow-hidden">
       {/* Top Bar */}
-      <div className="px-6 py-4 flex items-center justify-between">
+      <div className="px-6 py-4 flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-elevated)]/50 backdrop-blur-md">
         <div className="flex items-center gap-2">
           <div className="h-6 w-6 rounded bg-[var(--accent)] flex items-center justify-center">
-            <Check size={14} className="text-white" />
+            <Sparkles size={12} className="text-white" />
           </div>
-          <span className="font-bold text-sm">FinTrace</span>
+          <span className="font-bold text-sm tracking-wide">FinTrace Setup</span>
         </div>
         <button 
           onClick={() => {
@@ -69,83 +134,73 @@ export const Onboarding = ({ onComplete }: { onComplete: () => void }) => {
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 px-8 py-4 flex flex-col justify-between min-h-0">
+      <div className="flex-1 flex flex-col justify-center px-6 md:px-12 max-w-2xl mx-auto w-full py-12">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="flex-1 flex flex-col min-h-0"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="flex-1 flex flex-col justify-center"
           >
-            {/* Image Container */}
-            <div className="flex-1 min-h-[180px] max-h-[35vh] rounded-[32px] overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border)] relative shadow-2xl shadow-black/20 mb-6">
-              <img 
-                src={step.image} 
-                alt={step.title}
-                className="w-full h-full object-cover"
-              />
+            <div 
+              className="w-16 h-16 rounded-2xl flex items-center justify-center mb-8 border"
+              style={{ backgroundColor: step.bg, borderColor: step.color, color: step.color }}
+            >
+              <StepIcon size={32} />
             </div>
 
-            {/* Text Area */}
-            <div className="text-center shrink-0">
-              <h2 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-                {step.title}
-              </h2>
-              <p className="mt-2 text-sm text-[var(--text-secondary)] leading-relaxed">
-                {step.description}
-              </p>
-            </div>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-[var(--text-primary)] mb-4 leading-tight">
+              {step.title}
+            </h1>
+            <p className="text-lg text-[var(--text-muted)] leading-relaxed mb-12 max-w-lg">
+              {step.description}
+            </p>
 
-            {/* Features (if any) */}
-            {step.features && (
-              <div className="mt-4 flex flex-col gap-2 shrink-0">
-                {step.features.map((f, i) => (
-                  <div key={i} className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl p-2.5 flex items-center gap-3">
-                    <div className="h-4 w-4 rounded-md bg-[var(--accent-subtle)] flex items-center justify-center shrink-0">
-                      <Check size={10} className="text-[var(--accent)]" />
-                    </div>
-                    <span className="text-[10px] font-medium text-[var(--text-secondary)]">{f}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="w-full max-w-sm mb-12">
+              {renderInput()}
+            </div>
+            
           </motion.div>
         </AnimatePresence>
 
-        {/* Footer / Controls */}
-        <div className="mt-8 flex flex-col gap-3 shrink-0">
-          {/* Pagination Dots */}
-          <div className="flex items-center justify-center gap-1.5 mb-4">
-            {STEPS.map((_, i) => (
+        {/* Controls */}
+        <div className="flex flex-col gap-4 mt-auto">
+          {/* Progress Bar */}
+          <div className="flex items-center gap-2 mb-4">
+            {WIZARD_STEPS.map((_, i) => (
               <div 
                 key={i}
-                className={`h-1 rounded-full transition-all duration-300 ${
-                  i === currentStep ? 'w-6 bg-[var(--accent)]' : 'w-2 bg-[var(--border)]'
+                className={`h-1.5 rounded-full transition-all duration-500 ${
+                  i === currentStep ? 'w-full bg-[var(--accent)]' : 
+                  i < currentStep ? 'w-full bg-[var(--accent)]/40' : 'w-full bg-[var(--border)]'
                 }`}
               />
             ))}
           </div>
 
-          <Button 
-            onClick={next} 
-            className="w-full h-12 text-sm font-bold rounded-xl bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white shadow-lg shadow-[var(--accent)]/20"
-          >
-            {currentStep === STEPS.length - 1 ? 'Get Started' : 'Next'}
-            {currentStep < STEPS.length - 1 && <ChevronRight size={16} className="ml-2" />}
-          </Button>
-
-          {currentStep > 0 ? (
-            <button 
-              onClick={back}
-              className="w-full h-10 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors flex items-center justify-center gap-2"
+          <div className="flex items-center gap-3">
+            {currentStep > 0 && (
+              <Button 
+                variant="outline" 
+                onClick={back}
+                className="h-14 px-6 rounded-xl"
+              >
+                <ArrowLeft size={18} />
+              </Button>
+            )}
+            
+            <Button 
+              onClick={next} 
+              disabled={!canProceed() || loading}
+              loading={loading}
+              className="flex-1 h-14 text-base font-bold rounded-xl shadow-lg shadow-[var(--accent)]/20"
             >
-              <ArrowLeft size={14} /> Back
-            </button>
-          ) : (
-            <div className="h-10" />
-          )}
+              {currentStep === WIZARD_STEPS.length - 1 ? 'Save & Finish Setup' : 'Continue'}
+              {currentStep < WIZARD_STEPS.length - 1 && <ChevronRight size={18} className="ml-2" />}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

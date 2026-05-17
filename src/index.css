@@ -37,6 +37,41 @@
     --font-mono: 'JetBrains Mono', monospace;
   }
 
+  [data-theme="oled"] {
+    --bg-base: #000000;
+    --bg-surface: #0a0a0a;
+    --bg-elevated: #111111;
+    --bg-card: #080808;
+    --bg-hover: #161616;
+    --border: #1a1a1a;
+    --border-subtle: #111111;
+  }
+
+  [data-theme="glass"] {
+    --bg-base: #0f1115;
+    --bg-surface: rgba(25, 28, 35, 0.6);
+    --bg-elevated: rgba(35, 40, 50, 0.7);
+    --bg-card: rgba(20, 22, 28, 0.5);
+    --bg-hover: rgba(45, 52, 65, 0.8);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-subtle: rgba(255, 255, 255, 0.03);
+    /* Adding a subtle glassmorphism blur backdrop to elements using surface/elevated */
+  }
+
+  [data-theme="matcha"] {
+    --bg-base: #111412;
+    --bg-surface: #181d1a;
+    --bg-elevated: #202622;
+    --bg-card: #141816;
+    --bg-hover: #272f2a;
+    --border: #2c3530;
+    --border-subtle: #1e2420;
+    --accent: #4ade80; /* bright matcha green */
+    --accent-hover: #22c55e;
+    --accent-subtle: rgba(74, 222, 128, 0.12);
+    --accent-glow: rgba(74, 222, 128, 0.25);
+  }
+
   *,
   *::before,
   *::after {

@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCurrency, CURRENCIES } from '@/lib/CurrencyContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { AvatarUpload } from '@/components/settings/AvatarUpload';
+import { ThemeSelector } from '@/components/ui/ThemeSelector';
 import { Check } from 'lucide-react';
 
 export const SettingsPage = () => {
@@ -102,6 +103,11 @@ export const SettingsPage = () => {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate('/');
+  };
+
+  const handleRestartOnboarding = () => {
+    localStorage.removeItem('fintrace_onboarded');
+    window.location.reload();
   };
 
   const handleDeleteAllExpenses = async () => {
@@ -248,6 +254,14 @@ export const SettingsPage = () => {
             </CardContent>
           </Card>
 
+          {/* Theme Settings */}
+          <Card>
+            <CardHeader><CardTitle>Appearance</CardTitle></CardHeader>
+            <CardContent>
+              <ThemeSelector />
+            </CardContent>
+          </Card>
+
           {/* Danger Zone */}
           <Card className="border-[var(--danger)]/20">
             <CardHeader>
@@ -262,6 +276,20 @@ export const SettingsPage = () => {
                   {msg}
                 </p>
               )}
+              <div className="flex items-center justify-between p-3 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border)]">
+                <div>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">Restart Setup Wizard</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">Re-run the initial onboarding sequence</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRestartOnboarding}
+                >
+                  Restart
+                </Button>
+              </div>
+
               <div className="flex items-center justify-between p-3 rounded-[var(--radius-sm)] bg-[var(--danger-subtle)]/40 border border-[var(--danger)]/15">
                 <div>
                   <p className="text-sm font-medium text-[var(--text-primary)]">Delete All Expenses</p>

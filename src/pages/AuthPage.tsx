@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import type { AuthMode } from '@/types';
 
-export const AuthPage = () => {
-  const [mode, setMode] = useState<AuthMode>('login');
+export const AuthPage = ({ initialError }: { initialError?: string }) => {
+  const [mode, setMode] = useState<AuthMode | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(initialError || '');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
@@ -41,10 +41,23 @@ export const AuthPage = () => {
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-      } else {
-        const { error } = await supabase.auth.signUp({ email, password });
+      } else if (mode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
+        
+        // Supabase trick: If identities array is empty, the user already exists!
+        if (data?.user && data.user.identities && data.user.identities.length === 0) {
+          setMode('login');
+          throw new Error('An account with this email already exists. Please sign in instead.');
+        }
+        
         setSuccess('Check your email to confirm your account.');
+      } else if (mode === 'reset') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/dashboard`,
+        });
+        if (error) throw error;
+        setSuccess('Password reset link sent to your email.');
       }
     } catch (err: any) {
       setError(err.message ?? 'An error occurred');
@@ -103,10 +116,10 @@ export const AuthPage = () => {
         {/* Card */}
         <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-5 sm:p-7 shadow-[var(--shadow-lg)]">
           <h1 className="text-xl font-semibold text-[var(--text-primary)] mb-1">
-            {mode === 'login' ? 'Welcome back' : 'Create account'}
+            {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create account' : 'Reset password'}
           </h1>
           <p className="text-sm text-[var(--text-muted)] mb-6">
-            {mode === 'login' ? 'Sign in to your Fintrack account' : 'Start tracking your expenses with AI'}
+            {mode === 'login' ? 'Sign in to your Fintrack account' : mode === 'signup' ? 'Start tracking your expenses with AI' : 'Enter your email to receive a reset link'}
           </p>
 
           <form onSubmit={handleAuth} className="flex flex-col gap-4">
@@ -120,33 +133,46 @@ export const AuthPage = () => {
               leftIcon={<Mail size={14} />}
               required
             />
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="auth-password" className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">
-                Password
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
-                  <Lock size={14} />
-                </span>
-                <input
-                  id="auth-password"
-                  type={showPass ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="w-full h-10 pl-9 pr-10 rounded-[var(--radius-sm)]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                >
-                  {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
+            {mode !== 'reset' && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="auth-password" className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">
+                    Password
+                  </label>
+                  {mode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => { setMode('reset'); setError(''); setSuccess(''); }}
+                      className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+                    <Lock size={14} />
+                  </span>
+                  <input
+                    id="auth-password"
+                    type={showPass ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="w-full h-10 pl-9 pr-10 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(s => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                  >
+                    {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {error && (
               <motion.p
@@ -166,7 +192,7 @@ export const AuthPage = () => {
             )}
 
             <Button type="submit" loading={loading} className="mt-1 w-full">
-              {mode === 'login' ? 'Sign In' : 'Create Account'}
+              {mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
             </Button>
           </form>
 
@@ -190,16 +216,28 @@ export const AuthPage = () => {
             Sign in with Google
           </Button>
 
-          <div className="mt-5 text-center">
-            <p className="text-xs text-[var(--text-muted)]">
-              {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-              <button
-                onClick={() => { setMode(m => m === 'login' ? 'signup' : 'login'); setError(''); setSuccess(''); }}
-                className="text-[var(--accent)] hover:text-[var(--accent-hover)] font-medium transition-colors"
-              >
-                {mode === 'login' ? 'Sign up' : 'Sign in'}
-              </button>
-            </p>
+          <div className="mt-5 text-center flex flex-col gap-2">
+            {mode === 'reset' ? (
+              <p className="text-xs text-[var(--text-muted)]">
+                Remembered your password?{' '}
+                <button
+                  onClick={() => { setMode('login'); setError(''); setSuccess(''); }}
+                  className="text-[var(--accent)] hover:text-[var(--accent-hover)] font-medium transition-colors"
+                >
+                  Back to sign in
+                </button>
+              </p>
+            ) : (
+              <p className="text-xs text-[var(--text-muted)]">
+                {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+                <button
+                  onClick={() => { setMode(m => m === 'login' ? 'signup' : 'login'); setError(''); setSuccess(''); }}
+                  className="text-[var(--accent)] hover:text-[var(--accent-hover)] font-medium transition-colors"
+                >
+                  {mode === 'login' ? 'Sign up' : 'Sign in'}
+                </button>
+              </p>
+            )}
           </div>
         </div>
 

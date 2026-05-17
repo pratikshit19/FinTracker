@@ -3,7 +3,10 @@ import { Trash2, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { NoSpendDay } from '@/components/dashboard/NoSpendDay';
+import { ReceiptModal } from '@/components/transactions/ReceiptModal';
 import { getCategoryColor, getCategoryIcon, formatDate } from '@/lib/utils';
+import { useState } from 'react';
 
 import type { Expense, ExpenseCategory } from '@/types';
 import { useCurrency } from '@/lib/CurrencyContext';
@@ -20,20 +23,18 @@ export const RecentTransactions = ({
   expenses, onDelete, onEdit, limit = 8, title = 'Recent Transactions'
 }: RecentTransactionsProps) => {
   const { formatAmount } = useCurrency();
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const displayed = expenses.slice(0, limit);
 
   return (
-    <Card>
+    <>
+      <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         {displayed.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-14 text-center px-6">
-            <span className="text-4xl mb-3">💸</span>
-            <p className="text-sm font-medium text-[var(--text-secondary)]">No transactions yet</p>
-            <p className="text-xs text-[var(--text-muted)] mt-1">Add your first expense to get started</p>
-          </div>
+          <NoSpendDay />
         ) : (
           <div className="divide-y divide-[var(--border-subtle)]">
             <AnimatePresence initial={false}>
@@ -48,7 +49,8 @@ export const RecentTransactions = ({
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 10, height: 0 }}
                     transition={{ delay: i * 0.04, duration: 0.25 }}
-                    className="flex items-center gap-3 px-5 py-3.5 group hover:bg-[var(--bg-hover)] transition-colors"
+                    className="flex items-center gap-3 px-5 py-3.5 group hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+                    onClick={() => setSelectedExpense(expense)}
                   >
                     {/* Icon */}
                     <span
@@ -79,7 +81,7 @@ export const RecentTransactions = ({
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-0.5 ml-1">
+                    <div className="flex items-center gap-0.5 ml-1" onClick={e => e.stopPropagation()}>
                       <button 
                         onClick={() => onEdit(expense)} 
                         className="p-2 rounded-full hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all active:scale-90"
@@ -103,5 +105,17 @@ export const RecentTransactions = ({
         )}
       </CardContent>
     </Card>
+
+    {selectedExpense && (
+      <ReceiptModal
+        expense={selectedExpense}
+        onClose={() => setSelectedExpense(null)}
+        onEdit={(exp) => {
+          setSelectedExpense(null);
+          onEdit(exp);
+        }}
+      />
+    )}
+    </>
   );
 };

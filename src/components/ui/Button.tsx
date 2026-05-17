@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { motion, type HTMLMotionProps } from 'framer-motion';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
@@ -7,11 +8,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default:  'bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] active:scale-[0.97]',
-        ghost:    'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] active:scale-[0.97]',
-        outline:  'bg-transparent border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] active:scale-[0.97]',
-        danger:   'bg-[var(--danger-subtle)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white active:scale-[0.97]',
-        success:  'bg-[var(--success-subtle)] text-[var(--success)] hover:bg-[var(--success)] hover:text-white active:scale-[0.97]',
+        default:  'bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]',
+        ghost:    'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+        outline:  'bg-transparent border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
+        danger:   'bg-[var(--danger-subtle)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white',
+        success:  'bg-[var(--success-subtle)] text-[var(--success)] hover:bg-[var(--success)] hover:text-white',
         link:     'bg-transparent text-[var(--accent)] hover:text-[var(--accent-hover)] underline-offset-4 hover:underline p-0 h-auto',
       },
       size: {
@@ -26,27 +27,37 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends Omit<HTMLMotionProps<"button">, "size" | "children">,
     VariantProps<typeof buttonVariants> {
   loading?: boolean;
+  children?: React.ReactNode;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, loading, children, disabled, ...props }, ref) => (
-    <button
-      ref={ref}
-      className={cn(buttonVariants({ variant, size }), className)}
-      disabled={disabled || loading}
-      {...props}
-    >
-      {loading && (
-        <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-        </svg>
-      )}
-      {children}
-    </button>
-  )
+  ({ className, variant, size, loading, children, disabled, ...props }, ref) => {
+    // Determine scaling based on variant
+    const scaleTap = variant === 'link' ? 1 : 0.95;
+    const scaleHover = variant === 'link' ? 1 : 1.02;
+
+    return (
+      <motion.button
+        ref={ref}
+        whileHover={disabled || loading ? {} : { scale: scaleHover }}
+        whileTap={disabled || loading ? {} : { scale: scaleTap }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+        className={cn(buttonVariants({ variant, size }), className)}
+        disabled={disabled || loading}
+        {...props}
+      >
+        {loading && (
+          <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+        )}
+        {children as any}
+      </motion.button>
+    );
+  }
 );
 Button.displayName = 'Button';

@@ -139,7 +139,17 @@ export const DashboardPage = () => {
   }, 0);
 
   const disposableIncome = Math.max(0, monthlyIncome - fixedExpenses);
-  const freeToSpend = disposableIncome - savingsTarget - minLeftover;
+  const initialFreeToSpend = disposableIncome - savingsTarget - minLeftover;
+  
+  // Calculate discretionary spending (excluding bills so we don't double count fixed expenses)
+  const discretionarySpent = expenses
+    .filter(e => {
+      const d = new Date(e.date);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear && !e.title.startsWith('Bill:');
+    })
+    .reduce((s, e) => s + e.amount, 0);
+
+  const freeToSpend = initialFreeToSpend - discretionarySpent;
 
   return (
     <div className="flex flex-col gap-6 max-w-[1600px] mx-auto w-full pb-12">

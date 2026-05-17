@@ -280,7 +280,17 @@ export const BudgetsPage = () => {
 
   // The Clean Formula
   const disposableIncome = Math.max(0, monthlyIncome - fixedExpenses);
-  const freeToSpend = disposableIncome - savingsTarget - minLeftover;
+  const initialFreeToSpend = disposableIncome - savingsTarget - minLeftover;
+  
+  // Calculate discretionary spending (excluding bills so we don't double count fixed expenses)
+  const discretionarySpent = expenses
+    .filter(e => {
+      const d = new Date(e.date);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && !e.title.startsWith('Bill:');
+    })
+    .reduce((s, e) => s + e.amount, 0);
+
+  const freeToSpend = initialFreeToSpend - discretionarySpent;
   const isTightMonth = freeToSpend < 0;
 
   // Time metrics
@@ -290,9 +300,9 @@ export const BudgetsPage = () => {
 
   const dailyAllowance = freeToSpend > 0 ? freeToSpend / daysRemaining : 0;
   
-  // Smart Budget Capacity (distribute freeToSpend among categories)
+  // Smart Budget Capacity (distribute initialFreeToSpend among categories)
   const totalWeight = budgets.reduce((s, b) => s + (b.monthly_limit || 1), 0);
-  const budgetCapacity = Math.max(0, freeToSpend);
+  const budgetCapacity = Math.max(0, initialFreeToSpend);
   
   const smartBudgets = budgets.map(b => {
     const weight = b.monthly_limit || 1;
