@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Search, Sparkles, LayoutDashboard, List, PieChart, Calendar, Loader2, CheckCircle2, X } from 'lucide-react';
+import { Search, Sparkles, LayoutDashboard, List, PieChart, Calendar, Loader2, CheckCircle2, X, Coins } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
@@ -42,7 +42,8 @@ export const CommandPalette = () => {
   const pages = [
     { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={16} /> },
     { name: 'Transactions', path: '/transactions', icon: <List size={16} /> },
-    { name: 'Budgets', path: '/budgets', icon: <PieChart size={16} /> },
+    { name: 'Budgets & Goals', path: '/budgets', icon: <PieChart size={16} /> },
+    { name: 'AI Wealth Coach', path: '/wealth-coach', icon: <Coins size={16} /> },
     { name: 'Calendar', path: '/calendar', icon: <Calendar size={16} /> },
   ];
 

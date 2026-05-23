@@ -16,6 +16,8 @@ import { Spinner } from '@/components/ui/Spinner';
 import { SplashScreen } from '@/components/layout/SplashScreen';
 import { Onboarding } from '@/components/layout/Onboarding';
 import { UpdatePasswordPage } from '@/pages/UpdatePasswordPage';
+import { WealthCoachPage } from '@/pages/WealthCoachPage';
+
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -138,6 +140,7 @@ function App() {
             <Route path="/budgets"      element={<BudgetsPage />} />
             <Route path="/fixed-expenses" element={<FixedExpensesPage />} />
             <Route path="/insights"     element={<InsightsPage />} />
+            <Route path="/wealth-coach" element={<WealthCoachPage />} />
             <Route path="/settings"     element={<SettingsPage />} />
             <Route path="*"             element={<Navigate to="/dashboard" replace />} />
           </Route>

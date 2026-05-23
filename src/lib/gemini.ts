@@ -221,3 +221,152 @@ Answer this question concisely (2-3 sentences max): "${question}"`;
     return buildLocalAnswer(question, summary, currency);
   }
 }
+
+export interface WealthAdvice {
+  summary: string;
+  incomeStrategies: string[];
+  wealthSteps: string[];
+  challenge: string;
+  savingsRatePercent: number;
+  isLocal: boolean;
+}
+
+function buildLocalWealthAdvice(monthlyIncome: number, activeSips: { name: string; amount: number }[], totalSip: number, currency: string): WealthAdvice {
+  const savingsRate = monthlyIncome > 0 ? Math.round((totalSip / monthlyIncome) * 100) : 0;
+  
+  let summaryText = "";
+  if (totalSip === 0) {
+    summaryText = `You don't have any active SIPs tracking yet. Starting even a small monthly investment (e.g., ${currency}1,000 or ${currency}2,000) is the most powerful step to secure your financial future.`;
+  } else if (savingsRate < 10) {
+    summaryText = `Your active SIPs total ${currency}${totalSip.toLocaleString()} monthly (approx. ${savingsRate}% of your income). You have a solid foundation, but there is room to accelerate. Aim to increase your savings rate to 15-20% to speed up your financial independence timeline.`;
+  } else if (savingsRate <= 25) {
+    summaryText = `Impressive! You are investing ${currency}${totalSip.toLocaleString()} monthly, which is about ${savingsRate}% of your income. You are in a healthy wealth-building zone. Stepping up this amount by just 10% each year will compound into massive wealth over the next decade.`;
+  } else {
+    summaryText = `Fantastic! You're an aggressive wealth accumulator, investing ${currency}${totalSip.toLocaleString()} monthly (${savingsRate}% of your income). You are fast-tracking your financial freedom. Focus on asset allocation and expanding your income streams further.`;
+  }
+
+  const incomeStrategies = [
+    "🚀 Skill Monetization & Freelancing: Identify your top skill (e.g., development, copywriting, design, tutoring) and allocate 3-5 hours a week on platforms like Upwork or Contra. An extra income of just 20% can double your monthly SIP contribution.",
+    "📦 Create Digital Assets: Package your knowledge into templates, databases (e.g., Notion), or short guides and list them on Gumroad. Digital products have 100% margins and generate compounding passive income.",
+    "🌐 High-Value Consulting: Offer 1-on-1 strategic advisory sessions in your domain. Tools like Calendly and Luma make scheduling and charging for hourly consults completely frictionless."
+  ];
+
+  const wealthSteps = [
+    `📈 Activate a Step-Up SIP: An annual step-up of 10% on your current ${currency}${totalSip.toLocaleString()} SIP means next year you invest ${currency}${(totalSip * 1.1).toFixed(0)}. This subtle lifestyle adjustment can increase your 10-year wealth by over 45%.`,
+    "🛡️ Emergency Shield: Ensure you have 3 to 6 months of basic expenses in a high-yield liquid fund before locking capital in long-term equities, protecting your investments from forced liquidations.",
+    "⚡ Automate the First Hour: Set your SIP debit date to 1 or 2 days after your salary credit. Pay your future self first, before you get a chance to spend it on lifestyle inflation."
+  ];
+
+  const challenges = [
+    "Identify one recurring unused subscription, cancel it today, and increase your monthly SIP by that exact amount.",
+    "The 24-Hour Rule: Delay any non-essential purchase above a certain amount by 24 hours. If you still want it, buy it; if not, transfer that amount directly to your investment account.",
+    "Perform a quick skills audit: List 3 things people ask for your help with, and brainstorm a simple service page you could set up in under an hour."
+  ];
+
+  const randomChallenge = challenges[Math.floor(Math.abs(monthlyIncome + totalSip) % challenges.length)];
+
+  return {
+    summary: summaryText,
+    incomeStrategies,
+    wealthSteps,
+    challenge: randomChallenge,
+    savingsRatePercent: savingsRate,
+    isLocal: true
+  };
+}
+
+export async function generateWealthCoachAdvice(
+  monthlyIncome: number,
+  activeSips: { name: string; amount: number }[],
+  totalSip: number,
+  currency: string
+): Promise<WealthAdvice> {
+  if (!GEMINI_API_KEY) {
+    return buildLocalWealthAdvice(monthlyIncome, activeSips, totalSip, currency);
+  }
+
+  const sipDetails = activeSips.map(s => `${s.name}: ${s.amount} ${currency}/month`).join(', ') || 'No active SIPs';
+  const prompt = `You are a premium personal finance coach and active income strategist.
+  The user has the following profile:
+  - Monthly Income: ${monthlyIncome} ${currency}
+  - Total Monthly SIPs: ${totalSip} ${currency}
+  - Active SIPs: ${sipDetails}
+  
+  Provide hyper-personalized wealth building and active income strategies to help the user grow extremely wealthy.
+  In "summary": Analyze their current savings rate (Total SIPs / Income), celebrate their discipline, and explain how they can optimize it.
+  In "incomeStrategies": Suggest exactly 3 customized, practical, and highly lucrative ways to make active side income in today's time based on their capacity (e.g. niche freelancing, consulting, building digital assets/templates). Be extremely specific and actionable.
+  In "wealthSteps": List exactly 3 powerful mathematical or psychological wealth tips (e.g., the magic of a 10% annual Step-up SIP, automation rules, cutting high-value leakage).
+  In "challenge": Give exactly 1 actionable financial challenge for this week.
+  
+  Respond ONLY with valid JSON in this exact format:
+  {
+    "summary": "...",
+    "incomeStrategies": ["...", "...", "..."],
+    "wealthSteps": ["...", "...", "..."],
+    "challenge": "...",
+    "savingsRatePercent": <integer 0-100>,
+    "isLocal": false
+  }`;
+
+  try {
+    const text = await callGemini(prompt);
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found');
+    return { ...(JSON.parse(jsonMatch[0]) as WealthAdvice), isLocal: false };
+  } catch (error) {
+    console.error('[Fintrack] Gemini wealth advice generation failed, using local engine:', error);
+    return buildLocalWealthAdvice(monthlyIncome, activeSips, totalSip, currency);
+  }
+}
+
+export async function askWealthCoach(
+  question: string,
+  chatHistory: { role: string; text: string }[],
+  monthlyIncome: number,
+  activeSips: { name: string; amount: number }[],
+  totalSip: number,
+  currency: string
+): Promise<string> {
+  const text = question.trim().toLowerCase();
+  
+  // Local smart router check
+  if (!GEMINI_API_KEY) {
+    if (text.includes('side hustle') || text.includes('hustle') || text.includes('make money') || text.includes('earn more')) {
+      return `To make more money today, focus on "micro-consulting" or packaging what you already do. Since you have a ${currency}${totalSip.toLocaleString()} SIP, earning just an extra 20% on the side allows you to double your investments. Set up a simple bio link (like Contra or Bento), write down your top 3 professional skills, and pitch to 5 potential clients this week.`;
+    }
+    if (text.includes('step-up') || text.includes('stepup') || text.includes('increase sip') || text.includes('compound')) {
+      return `A Step-Up SIP is the ultimate cheat code for wealth. By increasing your ${currency}${totalSip.toLocaleString()} SIP by just 10% each year, your contributions align with salary hikes. Over 10 years at a 12% return, a standard SIP accumulates considerable wealth, but a 10% Step-Up SIP nearly doubles the final returns because of aggressive backend compounding.`;
+    }
+    if (text.includes('save') || text.includes('cut') || text.includes('budget')) {
+      return `To find investment fuel: check your automatic subscriptions first. Identify one service you haven't used in 30 days and terminate it immediately. Then, set a "first hour" automation rule—move your SIP debit date to the morning after payday so you invest before spending.`;
+    }
+    return `As your Wealth Coach, I advise focus on increasing your active income and maintaining a consistent step-up on your investments. Small adjustments in your daily savings, combined with high-value freelance projects or side income, can compound into financial freedom in under 10 years. What specific area of income generation or investing would you like to map out next?`;
+  }
+
+  const sipDetails = activeSips.map(s => `${s.name}: ${s.amount} ${currency}/month`).join(', ') || 'No active SIP';
+  const historyText = chatHistory.slice(-4).map(h => `${h.role === 'user' ? 'User' : 'Coach'}: ${h.text}`).join('\n');
+
+  const prompt = `You are a world-class financial freedom mentor and wealth building coach.
+  The user has:
+  - Monthly Income: ${monthlyIncome} ${currency}
+  - Total Monthly SIPs: ${totalSip} ${currency} (${sipDetails})
+  
+  Recent Conversation History:
+  ${historyText}
+  
+  User's Question: "${question}"
+  
+  Provide a highly motivating, practical, and mathematically sound coaching answer (3 sentences max). Suggest actionable steps to earn more or optimize their compound interest. Focus on modern wealth building.`;
+
+  try {
+    return await callGemini(prompt);
+  } catch (err) {
+    console.error('[Fintrack] Gemini wealth coach chat failed, using local router:', err);
+    // Simple fallback logic
+    if (text.includes('side hustle') || text.includes('hustle') || text.includes('make money') || text.includes('earn more')) {
+      return `To make more money today, focus on "micro-consulting" or packaging what you already do. Since you have a ${currency}${totalSip.toLocaleString()} SIP, earning just an extra 20% on the side allows you to double your investments. Set up a simple bio link (like Contra or Bento), write down your top 3 professional skills, and pitch to 5 potential clients this week.`;
+    }
+    return `As your Wealth Coach, I advise focus on increasing your active income and maintaining a consistent step-up on your investments. Small adjustments in your daily savings, combined with high-value freelance projects or side income, can compound into financial freedom in under 10 years. What specific area of income generation or investing would you like to map out next?`;
+  }
+}
+

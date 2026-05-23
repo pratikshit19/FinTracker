@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, LayoutDashboard, ArrowLeftRight, Sparkles, Settings, CreditCard, User, Plus } from 'lucide-react';
+import { Menu, LayoutDashboard, ArrowLeftRight, Sparkles, Settings, CreditCard, User, Plus, Coins } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -9,7 +9,8 @@ import { CommandPalette } from '@/components/CommandPalette';
 const BOTTOM_NAV = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Home'      },
   { to: '/transactions',  icon: ArrowLeftRight,  label: 'Expenses'  },
-  { to: '/fixed-expenses', icon: CreditCard,       label: 'Fixed Expenses'  },
+  { to: '/fixed-expenses', icon: CreditCard,       label: 'Fixed'     },
+  { to: '/wealth-coach',   icon: Coins,            label: 'Coach'     },
   { to: '/insights',      icon: Sparkles,        label: 'Insights'  },
   { to: '/settings',      icon: Settings,        label: 'Settings'  },
 ];
