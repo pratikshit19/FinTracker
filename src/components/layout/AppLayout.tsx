@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { CommandPalette } from '@/components/CommandPalette';
+import { Logo3D } from './Logo3D';
 
 const BOTTOM_NAV = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Home'      },
@@ -52,7 +53,7 @@ export const AppLayout = () => {
       <main className="flex-1 lg:ml-56 w-full min-h-screen flex flex-col min-w-0">
 
         {/* ── Mobile top bar ─────────────────────────────── */}
-        <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-5 py-4 bg-[var(--bg-surface)]/90 backdrop-blur-md border-b border-[var(--border)] w-full max-w-[100vw] overflow-hidden">
+        <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-5 py-3 bg-[var(--bg-surface)]/90 backdrop-blur-md border-b border-[var(--border)] w-full max-w-[100vw] overflow-hidden">
           <button
             id="mobile-menu-btn"
             onClick={() => setSidebarOpen(true)}
@@ -60,17 +61,24 @@ export const AppLayout = () => {
           >
             <Menu size={18} />
           </button>
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="h-6 w-6 rounded-full bg-[var(--accent)] flex items-center justify-center overflow-hidden shrink-0 border border-[var(--border)]">
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <User size={12} className="text-white" />
-              )}
+          
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-7 flex items-center justify-center shrink-0">
+              <Logo3D width="100%" height="100%" zoom={6.5} animate="spinFloat" animateSpeed={0.8} />
             </div>
-            <span className="font-bold text-xs tracking-tight text-[var(--text-primary)] truncate">
-              {profile?.username || 'FinTrace'}
+            <span className="font-bold text-sm tracking-tight text-[var(--text-primary)]">
+              FinTrace
             </span>
+          </div>
+
+          <div className="h-7 w-7 rounded-full bg-[var(--bg-elevated)] border border-[var(--border)] overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center bg-[var(--accent)] text-white font-bold text-[10px] select-none">
+                {(profile?.username || 'F').charAt(0).toUpperCase()}
+              </div>
+            )}
           </div>
         </header>
 

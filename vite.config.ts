@@ -12,6 +12,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       manifest: false, // We already have one in public/
       workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB limit
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i,

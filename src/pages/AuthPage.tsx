@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import type { AuthMode } from '@/types';
+import { Logo3D } from '@/components/layout/Logo3D';
 
 export const AuthPage = ({ initialError }: { initialError?: string }) => {
   const [mode, setMode] = useState<AuthMode | 'reset'>('login');
@@ -60,7 +61,11 @@ export const AuthPage = ({ initialError }: { initialError?: string }) => {
         setSuccess('Password reset link sent to your email.');
       }
     } catch (err: any) {
-      setError(err.message ?? 'An error occurred');
+      let msg = err.message ?? 'An error occurred';
+      if (msg.includes('Error sending recovery email')) {
+        msg = 'Unable to send recovery email. This typically occurs because Supabase\'s default built-in email provider is strictly rate-limited (max 3/hour) for testing. To resolve this, configure a Custom SMTP provider in your Supabase Dashboard under Authentication > Providers > SMTP.';
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -106,11 +111,14 @@ export const AuthPage = ({ initialError }: { initialError?: string }) => {
         className="relative z-10 w-full max-w-sm px-1"
       >
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2.5 mb-6">
-          <div className="h-9 w-9 rounded-xl bg-[var(--accent)] flex items-center justify-center shadow-lg animate-pulse-glow">
-            <TrendingUp size={18} className="text-white" />
+        <div className="flex flex-col items-center justify-center gap-3 mb-6">
+          <div className="h-32 w-32 flex items-center justify-center relative">
+            <Logo3D width="100%" height="100%" zoom={5.8} animate="spinFloat" animateSpeed={1.0} />
+            <div className="absolute inset-0 bg-[var(--accent)] blur-3xl opacity-10 -z-10 animate-pulse animate-duration-[4000ms]" />
           </div>
-          <span className="text-xl font-bold tracking-tight">FinTrace</span>
+          <span className="text-2xl font-black tracking-tight bg-gradient-to-b from-[var(--text-primary)] to-[var(--text-muted)] bg-clip-text text-transparent">
+            FinTrace
+          </span>
         </div>
 
         {/* Card */}

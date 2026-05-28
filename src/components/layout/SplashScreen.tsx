@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Logo3D } from './Logo3D';
 
 export const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
   const [show, setShow] = useState(true);
@@ -33,12 +33,12 @@ export const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
             }}
             className="relative"
           >
-            <div className="h-20 w-20 rounded-[22px] bg-gradient-to-br from-[var(--accent)] to-[#8b5cf6] flex items-center justify-center shadow-2xl shadow-[var(--accent)]/20">
-              <Sparkles size={40} className="text-white" />
+            <div className="h-44 w-44 flex items-center justify-center relative z-10">
+              <Logo3D width="100%" height="100%" zoom={5.2} animate="spinFloat" animateSpeed={1.5} />
             </div>
             
             {/* Ambient Glow */}
-            <div className="absolute inset-0 bg-[var(--accent)] blur-2xl opacity-20 -z-10 animate-pulse" />
+            <div className="absolute inset-0 bg-[var(--accent)] blur-3xl opacity-20 -z-10 animate-pulse animate-duration-[3000ms]" />
           </motion.div>
 
           {/* Text Content */}
