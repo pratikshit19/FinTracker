@@ -13,6 +13,8 @@ export const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
     return () => clearTimeout(timer);
   }, [onComplete]);
 
+
+
   return (
     <AnimatePresence>
       {show && (
@@ -26,8 +28,8 @@ export const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ 
-              duration: 0.8, 
+            transition={{
+              duration: 0.8,
               ease: [0.16, 1, 0.3, 1],
               opacity: { duration: 0.4 }
             }}
@@ -36,7 +38,7 @@ export const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
             <div className="h-44 w-44 flex items-center justify-center relative z-10">
               <Logo3D width="100%" height="100%" zoom={5.2} animate="spinFloat" animateSpeed={1.5} />
             </div>
-            
+
             {/* Ambient Glow */}
             <div className="absolute inset-0 bg-[var(--accent)] blur-3xl opacity-20 -z-10 animate-pulse animate-duration-[3000ms]" />
           </motion.div>
@@ -62,19 +64,19 @@ export const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
           </div>
 
           {/* Loading Indicator */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
             className="absolute bottom-16 w-32 h-1 bg-[var(--bg-elevated)] rounded-full overflow-hidden"
           >
-            <motion.div 
+            <motion.div
               initial={{ x: '-100%' }}
               animate={{ x: '100%' }}
-              transition={{ 
-                repeat: Infinity, 
-                duration: 1.5, 
-                ease: "easeInOut" 
+              transition={{
+                repeat: Infinity,
+                duration: 1.5,
+                ease: "easeInOut"
               }}
               className="h-full w-full bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent"
             />
